@@ -1,0 +1,97 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "GRVT TypeScript SDK",
+  "projectDescription": "TypeScript SDK for interacting with GRVT's trading platform via REST API and WebSocket connections.",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/environments",
+              "concepts/signing"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/rest-client",
+              "guides/websocket-client",
+              "guides/transfers",
+              "guides/deposits-withdrawals",
+              "guides/account-management"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Clients",
+            "pages": [
+              "api/grvt-client",
+              "api/grvt-ws-client"
+            ]
+          },
+          {
+            "group": "Types & Enums",
+            "pages": [
+              "api/types/configuration",
+              "api/types/currency",
+              "api/types/chain",
+              "api/types/transfer",
+              "api/types/deposit",
+              "api/types/signature"
+            ]
+          },
+          {
+            "group": "Signing",
+            "pages": [
+              "api/signing/transfer",
+              "api/signing/withdraw",
+              "api/signing/utils"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "REST API client for trading operations",
+    "WebSocket client for real-time data streaming",
+    "EIP-712 cryptographic signing for secure transactions",
+    "Multi-chain deposit and withdrawal support",
+    "Account and sub-account management",
+    "Transfer history and transaction queries"
+  ],
+  "publicApiSurface": [
+    "GrvtClient",
+    "GrvtWsClient",
+    "ECurrency",
+    "EChain",
+    "EGrvtEnvironment",
+    "ETransferType",
+    "signTransfer",
+    "signWithdrawal",
+    "IApiTransferRequest",
+    "IApiWithdrawalRequest",
+    "IDepositOptions",
+    "ISigningOptions"
+  ]
+}
