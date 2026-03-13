@@ -1,0 +1,432 @@
+---
+title: Account Management
+description: Learn how to manage accounts, sub-accounts, retrieve account summaries, and handle authentication
+---
+
+## Overview
+
+The GRVT platform uses a hierarchical account structure with funding accounts and sub-accounts. This guide covers how to manage accounts, retrieve account information, and handle authentication.
+
+## Account Structure
+
+GRVT uses a two-tier account structure:
+
+- **Funding Account**: Your main account that holds funds
+- **Sub-Accounts**: Trading accounts that inherit from the funding account
+
+```
+Funding Account (Main Account)
+├── Sub-Account 0 (Default/Main)
+├── Sub-Account 1 (Trading)
+├── Sub-Account 2 (Trading)
+└── Sub-Account N (Trading)
+```
+
+<Note>
+  Sub-account ID `'0'` typically refers to the main account or default sub-account.
+</Note>
+
+## Authentication
+
+### API Key Authentication
+
+The SDK uses API key authentication for all operations:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+
+const client = new GrvtClient({
+  apiKey: 'your-api-key',           // Required for authentication
+  apiSecret: 'your-api-secret',     // Optional: Required for signing operations
+  env: EGrvtEnvironment.TESTNET,
+});
+```
+
+### Cookie-Based Sessions
+
+The SDK automatically manages authentication cookies:
+
+1. **Initial Authentication**: When you make your first API call, the SDK obtains an authentication cookie
+2. **Cookie Refresh**: Cookies are automatically refreshed 5 seconds before expiration
+3. **Cookie Headers**: All authenticated requests include `Cookie` and `X-Grvt-Account-Id` headers
+
+```typescript
+// Authentication is handled automatically
+const accountSummary = await client.getFundingAccountSummary();
+// Cookie is obtained and included in request
+```
+
+<Note>
+  You don't need to manually manage cookies. The SDK handles all cookie operations automatically.
+</Note>
+
+## Funding Account
+
+### Get Funding Account Summary
+
+Retrieve information about your main funding account:
+
+```typescript
+const fundingAccount = await client.getFundingAccountSummary();
+
+console.log('Account ID:', fundingAccount.account_id);
+console.log('Balances:', fundingAccount.balances);
+console.log('Available:', fundingAccount.available);
+```
+
+The response includes:
+- Account ID
+- Currency balances
+- Available funds
+- Locked funds
+- Pending deposits/withdrawals
+
+### Example Response Structure
+
+```typescript
+interface IApiFundingAccountSummaryResponse {
+  account_id: string;
+  balances: {
+    [currency: string]: {
+      balance: string;
+      available: string;
+      locked: string;
+      pending_deposit: string;
+      pending_withdrawal: string;
+    };
+  };
+  // ... additional fields
+}
+```
+
+## Sub-Accounts
+
+### Get Sub-Account Summary
+
+Retrieve information about a specific sub-account:
+
+```typescript
+const subAccount = await client.getSubAccountSummary({
+  sub_account_id: 'your-sub-account-id',
+});
+
+console.log('Sub-account:', subAccount);
+```
+
+### Query Multiple Sub-Accounts
+
+```typescript
+const subAccountIds = ['sub-1', 'sub-2', 'sub-3'];
+
+const summaries = await Promise.all(
+  subAccountIds.map(subAccountId =>
+    client.getSubAccountSummary({ sub_account_id: subAccountId })
+  )
+);
+
+summaries.forEach((summary, index) => {
+  console.log(`Sub-account ${subAccountIds[index]}:`, summary);
+});
+```
+
+### Sub-Account Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sub_account_id` | `string` | Yes | Sub-account ID to query |
+
+## Account Configuration
+
+### Environment-Specific Configuration
+
+Each environment has its own domain and chain ID:
+
+```typescript
+enum EGrvtEnvironment {
+  PRODUCTION = 'PRODUCTION',  // grvt.io (Chain ID: 325)
+  TESTNET = 'TESTNET',        // testnet.grvt.io (Chain ID: 326)
+  STAGING = 'STAGING',        // staging.gravitymarkets.io (Chain ID: 327)
+  DEV = 'DEV',                // dev.gravitymarkets.io (Chain ID: 327)
+}
+```
+
+### Default Trading Account
+
+You can set a default trading account during initialization:
+
+```typescript
+const client = new GrvtClient({
+  apiKey: process.env.API_KEY!,
+  apiSecret: process.env.API_SECRET!,
+  tradingAccountId: 'default-trading-account-id',
+  env: EGrvtEnvironment.TESTNET,
+});
+```
+
+<Note>
+  The `tradingAccountId` is optional and can be overridden in individual API calls.
+</Note>
+
+## Complete Example
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+
+async function manageAccounts() {
+  // Initialize client
+  const client = new GrvtClient({
+    apiKey: process.env.API_KEY!,
+    apiSecret: process.env.API_SECRET!,
+    env: EGrvtEnvironment.TESTNET,
+  });
+
+  try {
+    // Get funding account summary
+    console.log('Fetching funding account...');
+    const fundingAccount = await client.getFundingAccountSummary();
+    console.log('Funding Account ID:', fundingAccount.account_id);
+    console.log('Balances:', fundingAccount.balances);
+
+    // Get sub-account summaries
+    const subAccountId = 'your-sub-account-id';
+    console.log(`Fetching sub-account ${subAccountId}...`);
+    const subAccount = await client.getSubAccountSummary({
+      sub_account_id: subAccountId,
+    });
+    console.log('Sub-Account:', subAccount);
+
+    // Get server time for reference
+    const serverTime = await client.getCurrentTime();
+    console.log('Server time:', serverTime);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+manageAccounts();
+```
+
+## Account Operations
+
+### Transfers Between Accounts
+
+Transfer funds between your funding account and sub-accounts:
+
+```typescript
+import { ECurrency, ETransferType } from '@grvt/sdk';
+
+// Transfer from funding account to sub-account
+const transfer = await client.transfer({
+  from_account_id: 'funding-account-id',
+  from_sub_account_id: '0',  // Main account
+  to_account_id: 'funding-account-id',
+  to_sub_account_id: 'trading-sub-account-id',
+  currency: ECurrency.USDT,
+  num_tokens: '1000',
+  transfer_type: ETransferType.STANDARD,
+});
+
+console.log('Transfer complete:', transfer.transfer_id);
+```
+
+See the [Transfers guide](/guides/transfers) for more details.
+
+### Account History
+
+Query account-specific transaction history:
+
+```typescript
+// Get transfer history
+const transferHistory = await client.getTransferHistory({
+  start_time: '1745600642000785050',
+  end_time: '1758891778774100000',
+});
+
+// Get deposit history
+const depositHistory = await client.getDepositHistory({
+  start_time: '1745600642000785050',
+  end_time: '1758891778774100000',
+});
+
+// Get withdrawal history
+const withdrawalHistory = await client.getWithdrawalHistory({
+  start_time: '1745600642000785050',
+  end_time: '1758891778774100000',
+});
+```
+
+## Real-Time Account Updates
+
+### WebSocket Subscriptions
+
+Subscribe to real-time account updates using the WebSocket client:
+
+```typescript
+import { GrvtWsClient } from '@grvt/sdk';
+
+const wsClient = new GrvtWsClient({
+  apiKey: process.env.API_KEY!,
+  env: EGrvtEnvironment.TESTNET,
+});
+
+await wsClient.connect();
+
+// Subscribe to funding account transfers
+wsClient.subscribeTransferHistory(
+  'funding-account-id',
+  (data) => {
+    console.log('Funding account transfer:', data);
+  }
+);
+
+// Subscribe to sub-account transfers
+wsClient.subscribeTransferHistory(
+  'funding-account-id',
+  (data) => {
+    console.log('Sub-account transfer:', data);
+  },
+  'sub-account-id'
+);
+```
+
+See the [WebSocket Client guide](/guides/websocket-client) for more details.
+
+## Server Time
+
+### Get Current Server Time
+
+Retrieve the current server time for time synchronization:
+
+```typescript
+const serverTime = await client.getCurrentTime();
+console.log('Server time (ms):', serverTime);
+// Example: 1747397398409
+```
+
+### Convert to Nanoseconds
+
+Many API operations require timestamps in nanoseconds:
+
+```typescript
+const serverTimeMs = await client.getCurrentTime();
+const serverTimeNs = (serverTimeMs * 1_000_000).toString();
+
+// Use in history queries
+const history = await client.getTransferHistory({
+  start_time: serverTimeNs,
+  end_time: ((serverTimeMs + 3600000) * 1_000_000).toString(), // +1 hour
+});
+```
+
+## Error Handling
+
+```typescript
+try {
+  const fundingAccount = await client.getFundingAccountSummary();
+  console.log('Account:', fundingAccount);
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes('authentication')) {
+      console.error('Authentication failed. Check your API key.');
+    } else if (error.message.includes('not found')) {
+      console.error('Account not found.');
+    } else {
+      console.error('Error:', error.message);
+    }
+  }
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Secure API Credentials">
+    Never hardcode API keys. Use environment variables:
+
+    ```typescript
+    const client = new GrvtClient({
+      apiKey: process.env.API_KEY!,
+      apiSecret: process.env.API_SECRET!,
+      env: process.env.GRVT_ENV as EGrvtEnvironment,
+    });
+    ```
+  </Step>
+
+  <Step title="Use Sub-Accounts for Trading">
+    Keep funds in your funding account and transfer to sub-accounts as needed:
+
+    ```typescript
+    // Transfer to trading sub-account
+    await client.transfer({
+      from_account_id: fundingAccountId,
+      from_sub_account_id: '0',
+      to_account_id: fundingAccountId,
+      to_sub_account_id: tradingSubAccountId,
+      // ...
+    });
+    ```
+  </Step>
+
+  <Step title="Monitor Account Balances">
+    Regularly check account balances before executing operations:
+
+    ```typescript
+    const account = await client.getFundingAccountSummary();
+    const usdtBalance = account.balances.USDT?.available;
+
+    if (parseFloat(usdtBalance) < minimumRequired) {
+      console.warn('Insufficient balance');
+    }
+    ```
+  </Step>
+
+  <Step title="Handle Cookie Refresh Transparently">
+    The SDK handles cookie refresh automatically. Don't try to manage it manually:
+
+    ```typescript
+    // Good: Let SDK handle authentication
+    const account = await client.getFundingAccountSummary();
+
+    // Bad: Don't try to manage cookies manually
+    // (SDK handles this internally)
+    ```
+  </Step>
+</Steps>
+
+## Environment Selection
+
+### Development and Testing
+
+```typescript
+// Use DEV or TESTNET for development
+const devClient = new GrvtClient({
+  apiKey: process.env.DEV_API_KEY!,
+  env: EGrvtEnvironment.DEV,
+});
+
+const testnetClient = new GrvtClient({
+  apiKey: process.env.TESTNET_API_KEY!,
+  env: EGrvtEnvironment.TESTNET,
+});
+```
+
+### Production
+
+```typescript
+// Use PRODUCTION for live trading
+const prodClient = new GrvtClient({
+  apiKey: process.env.PROD_API_KEY!,
+  apiSecret: process.env.PROD_API_SECRET!,
+  env: EGrvtEnvironment.PRODUCTION,
+});
+```
+
+<Warning>
+  Always use separate API keys for development and production environments. Never use production credentials in development.
+</Warning>
+
+## Next Steps
+
+- Learn about [transfer operations](/guides/transfers)
+- Explore [deposits and withdrawals](/guides/deposits-withdrawals)
+- Understand [WebSocket streaming](/guides/websocket-client)

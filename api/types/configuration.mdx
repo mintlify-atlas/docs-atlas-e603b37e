@@ -1,0 +1,108 @@
+---
+title: 'Configuration Types'
+description: 'Configuration interfaces and enums for initializing the GRVT SDK'
+---
+
+## IGrvtConfig
+
+The main configuration interface for initializing the GRVT SDK client.
+
+```typescript
+interface IGrvtConfig {
+  apiKey?: string;
+  apiSecret?: string;
+  tradingAccountId?: string;
+  env: EGrvtEnvironment;
+}
+```
+
+### Fields
+
+<ParamField path="apiKey" type="string" optional>
+  Your GRVT API key for authentication
+</ParamField>
+
+<ParamField path="apiSecret" type="string" optional>
+  Your GRVT API secret for authentication
+</ParamField>
+
+<ParamField path="tradingAccountId" type="string" optional>
+  The trading account ID to use for operations
+</ParamField>
+
+<ParamField path="env" type="EGrvtEnvironment" required>
+  The GRVT environment to connect to
+</ParamField>
+
+### Example
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+
+const config = {
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',
+  tradingAccountId: '0x123...',
+  env: EGrvtEnvironment.TESTNET
+};
+
+const client = new GrvtClient(config);
+```
+
+---
+
+## EGrvtEnvironment
+
+Enum defining the available GRVT environments.
+
+```typescript
+enum EGrvtEnvironment {
+  PRODUCTION = 'PRODUCTION',
+  TESTNET = 'TESTNET',
+  STAGING = 'STAGING',
+  DEV = 'DEV'
+}
+```
+
+### Values
+
+<ResponseField name="PRODUCTION" type="string">
+  Production environment for live trading (Chain ID: 325)
+</ResponseField>
+
+<ResponseField name="TESTNET" type="string">
+  Testnet environment for testing without real funds (Chain ID: 326)
+</ResponseField>
+
+<ResponseField name="STAGING" type="string">
+  Staging environment for pre-production testing (Chain ID: 327)
+</ResponseField>
+
+<ResponseField name="DEV" type="string">
+  Development environment for internal testing (Chain ID: 327)
+</ResponseField>
+
+### Chain IDs
+
+Each environment is associated with a specific chain ID:
+
+```typescript
+const CHAIN_IDS: Record<EGrvtEnvironment, number> = {
+  [EGrvtEnvironment.DEV]: 327,
+  [EGrvtEnvironment.STAGING]: 327,
+  [EGrvtEnvironment.TESTNET]: 326,
+  [EGrvtEnvironment.PRODUCTION]: 325,
+};
+```
+
+### Example
+
+```typescript
+import { EGrvtEnvironment } from '@grvt/sdk';
+
+// Use testnet for development
+const env = EGrvtEnvironment.TESTNET;
+
+// Use production for live trading
+const prodEnv = EGrvtEnvironment.PRODUCTION;
+```

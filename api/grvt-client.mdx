@@ -1,0 +1,618 @@
+---
+title: 'GrvtClient'
+description: 'Complete API reference for the GrvtClient REST API client'
+---
+
+## Overview
+
+`GrvtClient` is the main REST API client for interacting with GRVT's trading platform. It provides methods for managing accounts, transfers, deposits, withdrawals, and retrieving account history.
+
+## Constructor
+
+```typescript
+new GrvtClient(config: IGrvtConfig)
+```
+
+Creates a new instance of the GRVT REST API client.
+
+<ParamField path="config" type="IGrvtConfig" required>
+  Configuration object for the client
+  
+  <Expandable title="IGrvtConfig properties">
+    <ParamField path="apiKey" type="string">
+      Your GRVT API key for authentication
+    </ParamField>
+    
+    <ParamField path="apiSecret" type="string">
+      Your GRVT API secret for signing operations (required for signing transfers and withdrawals)
+    </ParamField>
+    
+    <ParamField path="tradingAccountId" type="string">
+      The trading account ID to use for operations
+    </ParamField>
+    
+    <ParamField path="env" type="EGrvtEnvironment" required>
+      The environment to connect to:
+      - `EGrvtEnvironment.PRODUCTION` - Production environment
+      - `EGrvtEnvironment.TESTNET` - Testnet environment
+      - `EGrvtEnvironment.STAGING` - Staging environment
+      - `EGrvtEnvironment.DEV` - Development environment
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+
+const client = new GrvtClient({
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',
+  env: EGrvtEnvironment.TESTNET
+});
+```
+
+## Account Methods
+
+### getFundingAccountSummary
+
+Retrieves the funding account summary for the authenticated user.
+
+```typescript
+async getFundingAccountSummary(): Promise<IApiFundingAccountSummaryResponse>
+```
+
+<ResponseField name="IApiFundingAccountSummaryResponse" type="object">
+  The funding account summary containing balance and account information
+</ResponseField>
+
+#### Example
+
+```typescript
+const fundingSummary = await client.getFundingAccountSummary();
+console.log('Funding Account:', fundingSummary);
+```
+
+### getSubAccountSummary
+
+Retrieves the sub-account summary for a specific sub-account.
+
+```typescript
+async getSubAccountSummary(
+  request: IApiSubAccountSummaryRequest
+): Promise<IApiSubAccountSummaryResponse>
+```
+
+<ParamField path="request" type="IApiSubAccountSummaryRequest" required>
+  Request parameters for the sub-account summary
+  
+  <Expandable title="IApiSubAccountSummaryRequest properties">
+    <ParamField path="sub_account_id" type="string" required>
+      The sub-account ID to retrieve the summary for
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IApiSubAccountSummaryResponse" type="object">
+  The sub-account summary containing balance, positions, and account information
+</ResponseField>
+
+#### Example
+
+```typescript
+const subAccountSummary = await client.getSubAccountSummary({
+  sub_account_id: '123'
+});
+console.log('Sub Account:', subAccountSummary);
+```
+
+## Transfer Methods
+
+### transfer
+
+Transfer funds between accounts. Automatically signs the transfer if `apiSecret` is configured.
+
+```typescript
+async transfer(
+  request: IApiTransferRequest,
+  metadata?: ITransferMetadata,
+  options?: ISigningOptions
+): Promise<IApiTransferResponse>
+```
+
+<ParamField path="request" type="IApiTransferRequest" required>
+  The transfer request parameters
+  
+  <Expandable title="IApiTransferRequest properties">
+    <ParamField path="from_account_id" type="string" required>
+      The account ID to transfer from
+    </ParamField>
+    
+    <ParamField path="to_account_id" type="string" required>
+      The account ID to transfer to
+    </ParamField>
+    
+    <ParamField path="currency" type="string" required>
+      The currency to transfer (e.g., 'USDT', 'BTC')
+    </ParamField>
+    
+    <ParamField path="num_tokens" type="string" required>
+      The amount to transfer as a string
+    </ParamField>
+    
+    <ParamField path="signature" type="ISignature">
+      Optional pre-generated signature. If not provided and `apiSecret` is configured, the SDK will sign automatically
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="metadata" type="ITransferMetadata">
+  Optional transfer metadata for tracking
+  
+  <Expandable title="ITransferMetadata properties">
+    <ParamField path="provider" type="ETransferProvider" required>
+      The transfer provider (e.g., `ETransferProvider.RHINO`)
+    </ParamField>
+    
+    <ParamField path="direction" type="ETransferDirection" required>
+      Transfer direction: `ETransferDirection.DEPOSIT` or `ETransferDirection.WITHDRAWAL`
+    </ParamField>
+    
+    <ParamField path="chainid" type="EChain" required>
+      The chain ID for the transfer
+    </ParamField>
+    
+    <ParamField path="endpoint" type="string" required>
+      The endpoint for the transfer provider
+    </ParamField>
+    
+    <ParamField path="provider_tx_id" type="string">
+      Optional transaction ID from the provider
+    </ParamField>
+    
+    <ParamField path="provider_ref_id" type="string">
+      Optional reference ID from the provider
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="options" type="ISigningOptions">
+  Optional signing options
+  
+  <Expandable title="ISigningOptions properties">
+    <ParamField path="nonce" type="number">
+      Custom nonce for the signature (defaults to random)
+    </ParamField>
+    
+    <ParamField path="expiration" type="string">
+      Signature expiration timestamp (defaults to 24 hours from now)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IApiTransferResponse" type="object">
+  The transfer response containing the transfer ID and status
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ETransferProvider, ETransferDirection, EChain } from '@grvt/client';
+
+const transferResponse = await client.transfer(
+  {
+    from_account_id: 'funding-account-123',
+    to_account_id: 'sub-account-456',
+    currency: 'USDT',
+    num_tokens: '1000'
+  },
+  {
+    provider: ETransferProvider.RHINO,
+    direction: ETransferDirection.DEPOSIT,
+    chainid: EChain.ARBITRUM,
+    endpoint: 'https://api.rhino.fi',
+    provider_tx_id: 'rhino-tx-123'
+  }
+);
+console.log('Transfer ID:', transferResponse.transfer_id);
+```
+
+### getTransferHistory
+
+Retrieves transfer history for the account within a specified time range.
+
+```typescript
+async getTransferHistory(
+  request: IApiTransferHistoryRequest
+): Promise<IApiTransferHistoryResponse>
+```
+
+<ParamField path="request" type="IApiTransferHistoryRequest" required>
+  Request parameters for transfer history
+  
+  <Expandable title="IApiTransferHistoryRequest properties">
+    <ParamField path="start_time" type="string" required>
+      Start time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="end_time" type="string" required>
+      End time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="sub_account_id" type="string">
+      Optional sub-account ID to filter transfers
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IApiTransferHistoryResponse" type="object">
+  Array of transfer records with metadata
+</ResponseField>
+
+#### Example
+
+```typescript
+const transferHistory = await client.getTransferHistory({
+  start_time: '2024-01-01T00:00:00Z',
+  end_time: '2024-01-31T23:59:59Z',
+  sub_account_id: '123'
+});
+console.log('Transfers:', transferHistory);
+```
+
+## Deposit Methods
+
+### deposit
+
+Deposit funds to the account using L1 bridge or direct transfer for Arbitrum.
+
+```typescript
+async deposit(options: IDepositOptions): Promise<string>
+```
+
+<ParamField path="options" type="IDepositOptions" required>
+  Deposit options
+  
+  <Expandable title="IDepositOptions properties">
+    <ParamField path="privateKey" type="string" required>
+      The private key to sign the deposit transaction
+    </ParamField>
+    
+    <ParamField path="l1Sender" type="string" required>
+      The L1 sender address
+    </ParamField>
+    
+    <ParamField path="l2Receiver" type="string" required>
+      The L2 receiver address on GRVT
+    </ParamField>
+    
+    <ParamField path="amount" type="string" required>
+      The amount to deposit as a string
+    </ParamField>
+    
+    <ParamField path="chainId" type="EChain" required>
+      The chain ID for the deposit
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="string" type="string">
+  The deposit transaction hash
+</ResponseField>
+
+#### Example
+
+```typescript
+import { EChain } from '@grvt/client';
+
+const txHash = await client.deposit({
+  privateKey: 'your-private-key',
+  l1Sender: '0x1234...',
+  l2Receiver: '0x5678...',
+  amount: '1000000000', // Amount in token's smallest unit
+  chainId: EChain.ETHEREUM
+});
+console.log('Deposit TX:', txHash);
+```
+
+### requestDepositApproval
+
+Request deposit approval signature from GRVT.
+
+```typescript
+async requestDepositApproval(
+  request: IApiDepositApprovalRequest
+): Promise<IDepositApprovalResponse>
+```
+
+<ParamField path="request" type="IApiDepositApprovalRequest" required>
+  Deposit approval request parameters
+  
+  <Expandable title="IApiDepositApprovalRequest properties">
+    <ParamField path="l1Sender" type="string" required>
+      The L1 sender address
+    </ParamField>
+    
+    <ParamField path="l2Receiver" type="string" required>
+      The L2 receiver address
+    </ParamField>
+    
+    <ParamField path="l1Token" type="string" required>
+      The L1 token address
+    </ParamField>
+    
+    <ParamField path="amount" type="string" required>
+      The amount to deposit
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IDepositApprovalResponse" type="object">
+  Deposit approval response containing the signature
+  
+  <Expandable title="properties">
+    <ResponseField name="signature" type="IDepositSignature">
+      The deposit signature with v, r, s components
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example
+
+```typescript
+const approval = await client.requestDepositApproval({
+  l1Sender: '0x1234...',
+  l2Receiver: '0x5678...',
+  l1Token: '0xUSDT...',
+  amount: '1000000000'
+});
+console.log('Approval signature:', approval.signature);
+```
+
+### getDepositHistory
+
+Retrieves deposit history for the account within a specified time range.
+
+```typescript
+async getDepositHistory(
+  request: IApiDepositHistoryRequest
+): Promise<IApiDepositHistoryResponse>
+```
+
+<ParamField path="request" type="IApiDepositHistoryRequest" required>
+  Request parameters for deposit history
+  
+  <Expandable title="IApiDepositHistoryRequest properties">
+    <ParamField path="start_time" type="string" required>
+      Start time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="end_time" type="string" required>
+      End time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="sub_account_id" type="string">
+      Optional sub-account ID to filter deposits
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IApiDepositHistoryResponse" type="object">
+  Array of deposit records
+</ResponseField>
+
+#### Example
+
+```typescript
+const depositHistory = await client.getDepositHistory({
+  start_time: '2024-01-01T00:00:00Z',
+  end_time: '2024-01-31T23:59:59Z'
+});
+console.log('Deposits:', depositHistory);
+```
+
+## Withdrawal Methods
+
+### withdraw
+
+Withdraw funds from the account. Automatically signs the withdrawal if `apiSecret` is configured.
+
+```typescript
+async withdraw(
+  request: IApiWithdrawalRequest,
+  options?: ISigningOptions
+): Promise<IAckResponse>
+```
+
+<ParamField path="request" type="IApiWithdrawalRequest" required>
+  The withdrawal request parameters
+  
+  <Expandable title="IApiWithdrawalRequest properties">
+    <ParamField path="sub_account_id" type="string" required>
+      The sub-account ID to withdraw from
+    </ParamField>
+    
+    <ParamField path="currency" type="string" required>
+      The currency to withdraw (e.g., 'USDT', 'BTC')
+    </ParamField>
+    
+    <ParamField path="num_tokens" type="string" required>
+      The amount to withdraw as a string
+    </ParamField>
+    
+    <ParamField path="signature" type="ISignature">
+      Optional pre-generated signature. If not provided and `apiSecret` is configured, the SDK will sign automatically
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="options" type="ISigningOptions">
+  Optional signing options
+  
+  <Expandable title="ISigningOptions properties">
+    <ParamField path="nonce" type="number">
+      Custom nonce for the signature (defaults to random)
+    </ParamField>
+    
+    <ParamField path="expiration" type="string">
+      Signature expiration timestamp (defaults to 24 hours from now)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IAckResponse" type="object">
+  Acknowledgment response for the withdrawal request
+</ResponseField>
+
+#### Example
+
+```typescript
+const withdrawalResponse = await client.withdraw({
+  sub_account_id: '123',
+  currency: 'USDT',
+  num_tokens: '1000'
+});
+console.log('Withdrawal acknowledged:', withdrawalResponse);
+```
+
+### getWithdrawalHistory
+
+Retrieves withdrawal history for the account within a specified time range.
+
+```typescript
+async getWithdrawalHistory(
+  request: IApiWithdrawalHistoryRequest
+): Promise<IApiWithdrawalHistoryResponse>
+```
+
+<ParamField path="request" type="IApiWithdrawalHistoryRequest" required>
+  Request parameters for withdrawal history
+  
+  <Expandable title="IApiWithdrawalHistoryRequest properties">
+    <ParamField path="start_time" type="string" required>
+      Start time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="end_time" type="string" required>
+      End time for the query (ISO 8601 format or Unix timestamp)
+    </ParamField>
+    
+    <ParamField path="sub_account_id" type="string">
+      Optional sub-account ID to filter withdrawals
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="IApiWithdrawalHistoryResponse" type="object">
+  Array of withdrawal records
+</ResponseField>
+
+#### Example
+
+```typescript
+const withdrawalHistory = await client.getWithdrawalHistory({
+  start_time: '2024-01-01T00:00:00Z',
+  end_time: '2024-01-31T23:59:59Z',
+  sub_account_id: '123'
+});
+console.log('Withdrawals:', withdrawalHistory);
+```
+
+## Utility Methods
+
+### getCurrentTime
+
+Retrieves the current server time from GRVT.
+
+```typescript
+async getCurrentTime(): Promise<number>
+```
+
+<ResponseField name="number" type="number">
+  Current server time in milliseconds since Unix epoch
+</ResponseField>
+
+#### Example
+
+```typescript
+const serverTime = await client.getCurrentTime();
+console.log('Server time:', new Date(serverTime));
+```
+
+### getGravityChainIDFromRhinoChain
+
+Get the Gravity chain ID for a given Rhino chain.
+
+```typescript
+async getGravityChainIDFromRhinoChain(rhinoChain: string): Promise<EChain | null>
+```
+
+<ParamField path="rhinoChain" type="string" required>
+  The Rhino chain identifier
+</ParamField>
+
+<ResponseField name="EChain | null" type="EChain | null">
+  The corresponding Gravity chain ID, or null if not found
+</ResponseField>
+
+#### Environment Mapping
+
+The method maps GRVT environments to Rhino environments:
+- `PRODUCTION` → Rhino PROD
+- `TESTNET` → Rhino STG
+- `STAGING` / `DEV` → Rhino DEV
+
+#### Example
+
+```typescript
+const chainId = await client.getGravityChainIDFromRhinoChain('ARBITRUM');
+if (chainId) {
+  console.log('Gravity Chain ID:', chainId);
+}
+```
+
+### kyaCheckRhinoSDADeposit
+
+Perform KYA (Know Your Address) check for a Rhino Smart Deposit Address deposit.
+
+```typescript
+async kyaCheckRhinoSDADeposit(
+  senderAddress: string,
+  rhinoChain: string,
+  smartDepositAddress: string
+): Promise<EKYACheckStatus>
+```
+
+<ParamField path="senderAddress" type="string" required>
+  The sender's address
+</ParamField>
+
+<ParamField path="rhinoChain" type="string" required>
+  The Rhino chain identifier
+</ParamField>
+
+<ParamField path="smartDepositAddress" type="string" required>
+  The smart deposit address to check
+</ParamField>
+
+<ResponseField name="EKYACheckStatus" type="EKYACheckStatus">
+  The KYA check status result
+</ResponseField>
+
+#### Example
+
+```typescript
+const kyaStatus = await client.kyaCheckRhinoSDADeposit(
+  '0x1234...',
+  'ARBITRUM',
+  '0x5678...'
+);
+console.log('KYA Status:', kyaStatus);
+```
+
+## Source Reference
+
+For complete implementation details, see:
+- `src/client/GrvtClient.ts`
+- `src/client/GrvtBaseClient.ts`

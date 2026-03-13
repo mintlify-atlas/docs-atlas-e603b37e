@@ -1,97 +1,95 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "GRVT TypeScript SDK"
+description: "TypeScript SDK for interacting with GRVT's trading platform via REST API and WebSocket connections"
 ---
 
-## Setting up
+<div className="bg-[#020627] rounded-xl p-8 border border-[#60639e] mb-8">
+  <h1 className="text-5xl font-bold text-white mb-4">
+    Build on GRVT with TypeScript
+  </h1>
+  <p className="text-xl text-[#cfd0d2] mb-6">
+    A comprehensive TypeScript SDK for trading, deposits, withdrawals, and real-time data streaming on the GRVT platform.
+  </p>
+  <div className="flex gap-4">
+    <a href="/quickstart" className="inline-block bg-[#238636] text-white px-6 py-3 rounded-md font-semibold hover:bg-[#2ea043] transition">
+      Get Started
+    </a>
+    <a href="https://github.com/gravity-technologies/grvt-ts-sdk" className="inline-block bg-transparent text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-white hover:text-[#020627] transition">
+      View on GitHub
+    </a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## Key Features
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="REST API Client" icon="plug" href="/guides/rest-client">
+    Execute trades, manage accounts, and query transaction history with a fully-typed REST client
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="WebSocket Streaming" icon="bolt" href="/guides/websocket-client">
+    Subscribe to real-time transfer feeds and account updates via WebSocket connections
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Secure Signing" icon="shield" href="/concepts/signing">
+    Built-in EIP-712 cryptographic signing for transfers and withdrawals
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Multi-Chain Support" icon="link" href="/guides/deposits-withdrawals">
+    Deposit and withdraw across Ethereum, Arbitrum, Polygon, BNB Chain, and more
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Quick Installation
 
-Everything you need to create world-class documentation.
+<CodeGroup>
+```bash npm
+npm install @grvt/sdk
+```
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+```bash yarn
+yarn add @grvt/sdk
+```
 
-## Need inspiration?
+```bash pnpm
+pnpm add @grvt/sdk
+```
+</CodeGroup>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Quick Example
+
+```typescript
+import { GrvtClient, EGrvtEnvironment, ECurrency } from '@grvt/sdk';
+
+// Initialize the client
+const client = new GrvtClient({
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',
+  env: EGrvtEnvironment.DEV,
+});
+
+// Get account summary
+const summary = await client.getFundingAccountSummary();
+
+// Execute a transfer
+const transfer = await client.transfer({
+  from_account_id: 'from-account-id',
+  to_account_id: 'to-account-id',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+});
+```
+
+## Explore the Documentation
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the SDK and configure your development environment
+  </Card>
+  <Card title="Authentication" icon="key" href="/concepts/authentication">
+    Learn how to authenticate with API keys and secrets
+  </Card>
+  <Card title="Transfers" icon="arrow-right-arrow-left" href="/guides/transfers">
+    Transfer funds between accounts and sub-accounts
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/grvt-client">
+    Complete API documentation for all classes and methods
+  </Card>
+</CardGroup>

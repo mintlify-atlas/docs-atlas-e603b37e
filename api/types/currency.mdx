@@ -1,0 +1,272 @@
+---
+title: 'Currency Types'
+description: 'Supported currencies and tokens in the GRVT ecosystem'
+---
+
+## ECurrency
+
+Enum defining all supported currencies and tokens on the GRVT platform.
+
+```typescript
+enum ECurrency {
+  // Fiat
+  USD = 'USD',
+  
+  // Stablecoins
+  USDC = 'USDC',
+  USDT = 'USDT',
+  
+  // Major Cryptocurrencies
+  ETH = 'ETH',
+  BTC = 'BTC',
+  SOL = 'SOL',
+  
+  // Layer 2 & Scaling Tokens
+  ARB = 'ARB',
+  OP = 'OP',
+  ZK = 'ZK',
+  POL = 'POL',
+  
+  // Exchange Tokens
+  BNB = 'BNB',
+  
+  // DeFi Tokens
+  AAVE = 'AAVE',
+  LINK = 'LINK',
+  PENDLE = 'PENDLE',
+  ENA = 'ENA',
+  
+  // Layer 1 Tokens
+  ATOM = 'ATOM',
+  ADA = 'ADA',
+  XRP = 'XRP',
+  XLM = 'XLM',
+  SUI = 'SUI',
+  TON = 'TON',
+  DOGE = 'DOGE',
+  
+  // Meme Tokens (1000x contracts)
+  KPEPE = 'KPEPE',     // 1000PEPE
+  KSHIB = 'KSHIB',     // 1000SHIB
+  KBONK = 'KBONK',     // 1000BONK
+  
+  // Meme & Community Tokens
+  WIF = 'WIF',
+  POPCAT = 'POPCAT',
+  PENGU = 'PENGU',
+  FARTCOIN = 'FARTCOIN',
+  
+  // AI & Tech Tokens
+  VIRTUAL = 'VIRTUAL',
+  AIXBT = 'AIXBT',
+  AI16Z = 'AI16Z',
+  KAITO = 'KAITO',
+  
+  // DeFi & Ecosystem Tokens
+  JUP = 'JUP',
+  WLD = 'WLD',
+  BERA = 'BERA',
+  VINE = 'VINE',
+  UXLINK = 'UXLINK',
+  IP = 'IP',
+  
+  // Political Tokens
+  TRUMP = 'TRUMP'
+}
+```
+
+## Currency Categories
+
+### Fiat Currencies
+
+<ResponseField name="USD" type="string">
+  United States Dollar - The USD fiat currency
+</ResponseField>
+
+### Stablecoins
+
+<ResponseField name="USDC" type="string">
+  USD Coin - Fully reserved dollar-backed stablecoin
+</ResponseField>
+
+<ResponseField name="USDT" type="string">
+  Tether USD - Popular dollar-pegged stablecoin
+</ResponseField>
+
+### Major Cryptocurrencies
+
+<ResponseField name="BTC" type="string">
+  Bitcoin - The original cryptocurrency
+</ResponseField>
+
+<ResponseField name="ETH" type="string">
+  Ethereum - Leading smart contract platform
+</ResponseField>
+
+<ResponseField name="SOL" type="string">
+  Solana - High-performance blockchain platform
+</ResponseField>
+
+### Layer 2 & Scaling Solutions
+
+<ResponseField name="ARB" type="string">
+  Arbitrum - Ethereum Layer 2 scaling solution
+</ResponseField>
+
+<ResponseField name="OP" type="string">
+  Optimism - Ethereum Layer 2 optimistic rollup
+</ResponseField>
+
+<ResponseField name="ZK" type="string">
+  zkSync - Zero-knowledge rollup technology
+</ResponseField>
+
+<ResponseField name="POL" type="string">
+  Polygon - Ethereum sidechain and scaling solution
+</ResponseField>
+
+### DeFi Tokens
+
+<ResponseField name="AAVE" type="string">
+  Aave - Decentralized lending protocol token
+</ResponseField>
+
+<ResponseField name="LINK" type="string">
+  Chainlink - Decentralized oracle network token
+</ResponseField>
+
+<ResponseField name="PENDLE" type="string">
+  Pendle - Yield trading protocol token
+</ResponseField>
+
+<ResponseField name="ENA" type="string">
+  Ethena - Synthetic dollar protocol token
+</ResponseField>
+
+### Meme Tokens (1000x Contracts)
+
+<ResponseField name="KPEPE" type="string">
+  1000PEPE - Pepe meme token (1000x contract)
+</ResponseField>
+
+<ResponseField name="KSHIB" type="string">
+  1000SHIB - Shiba Inu token (1000x contract)
+</ResponseField>
+
+<ResponseField name="KBONK" type="string">
+  1000BONK - Bonk meme token (1000x contract)
+</ResponseField>
+
+### AI & Technology Tokens
+
+<ResponseField name="VIRTUAL" type="string">
+  Virtual Protocol - AI agent infrastructure
+</ResponseField>
+
+<ResponseField name="AIXBT" type="string">
+  aixbt - AI trading agent token
+</ResponseField>
+
+<ResponseField name="AI16Z" type="string">
+  ai16z - AI venture capital token
+</ResponseField>
+
+<ResponseField name="KAITO" type="string">
+  Kaito - AI-powered social search
+</ResponseField>
+
+### Other Supported Tokens
+
+<ResponseField name="BNB" type="string">
+  Binance Coin - BNB Chain native token
+</ResponseField>
+
+<ResponseField name="ATOM" type="string">
+  Cosmos - Inter-blockchain communication protocol
+</ResponseField>
+
+<ResponseField name="ADA" type="string">
+  Cardano - Proof-of-stake blockchain platform
+</ResponseField>
+
+<ResponseField name="XRP" type="string">
+  Ripple - Digital payment protocol token
+</ResponseField>
+
+<ResponseField name="XLM" type="string">
+  Stellar Lumens - Cross-border payment network
+</ResponseField>
+
+<ResponseField name="SUI" type="string">
+  Sui - Layer 1 blockchain platform
+</ResponseField>
+
+<ResponseField name="TON" type="string">
+  Toncoin - The Open Network blockchain
+</ResponseField>
+
+<ResponseField name="DOGE" type="string">
+  Dogecoin - Popular meme cryptocurrency
+</ResponseField>
+
+<ResponseField name="WIF" type="string">
+  dogwifhat - Solana-based meme token
+</ResponseField>
+
+<ResponseField name="POPCAT" type="string">
+  Popcat - Viral meme token
+</ResponseField>
+
+<ResponseField name="PENGU" type="string">
+  Pudgy Penguins - NFT collection token
+</ResponseField>
+
+<ResponseField name="FARTCOIN" type="string">
+  Fartcoin - Community meme token
+</ResponseField>
+
+<ResponseField name="JUP" type="string">
+  Jupiter - Solana DEX aggregator token
+</ResponseField>
+
+<ResponseField name="WLD" type="string">
+  Worldcoin - Biometric identity protocol
+</ResponseField>
+
+<ResponseField name="BERA" type="string">
+  Berachain - Liquidity-focused L1 blockchain
+</ResponseField>
+
+<ResponseField name="VINE" type="string">
+  Vine Protocol - Community token
+</ResponseField>
+
+<ResponseField name="UXLINK" type="string">
+  UXLINK - Social infrastructure protocol
+</ResponseField>
+
+<ResponseField name="IP" type="string">
+  Story Protocol - IP infrastructure token
+</ResponseField>
+
+<ResponseField name="TRUMP" type="string">
+  Trump - Political meme token
+</ResponseField>
+
+## Example Usage
+
+```typescript
+import { ECurrency } from '@grvt/sdk';
+
+// Specify currency for trading
+const currency = ECurrency.USDC;
+
+// Use in deposit operations
+await client.deposit({
+  currency: ECurrency.USDC,
+  amount: '1000'
+});
+
+// Use in trading pairs
+const pair = `${ECurrency.BTC}_${ECurrency.USD}`;
+```

@@ -1,0 +1,444 @@
+---
+title: Transferring Funds
+description: Learn how to transfer funds between accounts, handle transfer metadata, and query transfer history
+---
+
+## Overview
+
+Transfers allow you to move funds between accounts within the GRVT platform. The SDK provides methods to execute transfers, attach metadata, and query transfer history.
+
+## Transfer Types
+
+GRVT supports several transfer types:
+
+- **STANDARD**: Regular transfers between accounts
+- **NON_NATIVE_BRIDGE_DEPOSIT**: Transfers from external chains via bridge
+- **NON_NATIVE_BRIDGE_WITHDRAW**: Withdrawals to external chains via bridge
+
+## Basic Transfer
+
+<Steps>
+  <Step title="Import Required Types">
+    ```typescript
+    import {
+      GrvtClient,
+      EGrvtEnvironment,
+      ECurrency,
+      ETransferType,
+    } from '@grvt/sdk';
+    ```
+  </Step>
+
+  <Step title="Initialize the Client">
+    ```typescript
+    const client = new GrvtClient({
+      apiKey: process.env.API_KEY!,
+      apiSecret: process.env.API_SECRET!,
+      env: EGrvtEnvironment.TESTNET,
+    });
+    ```
+
+    <Note>
+      An `apiSecret` is required for transfers because they must be signed.
+    </Note>
+  </Step>
+
+  <Step title="Execute Transfer">
+    ```typescript
+    const transfer = await client.transfer({
+      from_account_id: 'from-account-id',
+      from_sub_account_id: '0',
+      to_account_id: 'to-account-id',
+      to_sub_account_id: '0',
+      currency: ECurrency.USDT,
+      num_tokens: '100',
+      transfer_type: ETransferType.STANDARD,
+    });
+
+    console.log('Transfer ID:', transfer.transfer_id);
+    ```
+  </Step>
+</Steps>
+
+## Transfer Request Parameters
+
+The `IApiTransferRequest` interface accepts:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_account_id` | `string` | Yes | Source account ID |
+| `from_sub_account_id` | `string` | No | Source sub-account ID (use '0' for main) |
+| `to_account_id` | `string` | Yes | Destination account ID |
+| `to_sub_account_id` | `string` | No | Destination sub-account ID (use '0' for main) |
+| `currency` | `ECurrency` | Yes | Currency to transfer |
+| `num_tokens` | `string` | Yes | Amount to transfer (as string) |
+| `transfer_type` | `ETransferType` | Yes | Type of transfer |
+| `signature` | `ISignature` | No | Signature (auto-generated if omitted) |
+
+<Warning>
+  Do not set `transfer_metadata` directly in the request. Use the `metadata` parameter of the `transfer()` method instead.
+</Warning>
+
+## Transfer with Metadata
+
+For bridge deposits and withdrawals, you can attach metadata to track the external transaction:
+
+```typescript
+import {
+  ITransferMetadata,
+  ETransferProvider,
+  ETransferDirection,
+  EChain,
+} from '@grvt/sdk';
+
+const metadata: ITransferMetadata = {
+  provider: ETransferProvider.RHINO,
+  direction: ETransferDirection.DEPOSIT,
+  chainid: EChain.TRON,
+  endpoint: 'https://api.trongrid.io',
+  provider_tx_id: '0x1234...', // External transaction hash
+  provider_ref_id: 'commit-id', // Provider reference ID
+};
+
+const transfer = await client.transfer(
+  {
+    from_account_id: 'from-account-id',
+    to_account_id: 'to-account-id',
+    currency: ECurrency.USDT,
+    num_tokens: '100',
+    transfer_type: ETransferType.NON_NATIVE_BRIDGE_DEPOSIT,
+  },
+  metadata  // Metadata as second parameter
+);
+```
+
+### Transfer Metadata Fields
+
+```typescript
+interface ITransferMetadata {
+  provider: ETransferProvider;      // Bridge provider (e.g., RHINO)
+  direction: ETransferDirection;    // DEPOSIT or WITHDRAWAL
+  chainid: EChain;                  // External chain ID
+  endpoint: string;                 // RPC endpoint
+  provider_tx_id?: string;          // External transaction hash
+  provider_ref_id?: string;         // Provider reference ID
+  [key: string]: any;               // Additional custom fields
+}
+```
+
+### Transfer Providers
+
+```typescript
+enum ETransferProvider {
+  RHINO = 'rhino',
+}
+```
+
+### Transfer Directions
+
+```typescript
+enum ETransferDirection {
+  DEPOSIT = 'deposit',
+  WITHDRAWAL = 'withdrawal',
+}
+```
+
+## Custom Signing Options
+
+You can control the signature generation with signing options:
+
+```typescript
+import { ISigningOptions } from '@grvt/sdk';
+
+const signingOptions: ISigningOptions = {
+  nonce: 12345,                      // Optional: Must be non-negative
+  expiration: '1746093221289693252', // Optional: Nanoseconds (within 30 days)
+};
+
+const transfer = await client.transfer(
+  {
+    from_account_id: 'from-account-id',
+    to_account_id: 'to-account-id',
+    currency: ECurrency.USDT,
+    num_tokens: '100',
+    transfer_type: ETransferType.STANDARD,
+  },
+  undefined,     // No metadata
+  signingOptions // Custom signing options
+);
+```
+
+<Note>
+  If you don't provide signing options:
+  - A random nonce will be generated
+  - Expiration will be set to 24 hours from now
+</Note>
+
+## Manual Signature
+
+If you prefer to sign requests manually:
+
+```typescript
+import { signTransfer } from '@grvt/sdk/signing';
+import { Wallet } from 'ethers';
+
+const wallet = new Wallet('your-private-key');
+
+const request = {
+  from_account_id: 'from-account-id',
+  to_account_id: 'to-account-id',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+  transfer_type: ETransferType.STANDARD,
+};
+
+// Sign the request manually
+const signature = await signTransfer(
+  request,
+  wallet,
+  EGrvtEnvironment.TESTNET
+);
+
+// Attach signature to request
+request.signature = signature;
+
+// Execute transfer with pre-signed request
+const transfer = await client.transfer(request);
+```
+
+## Transfer History
+
+### Query Transfer History
+
+Retrieve historical transfers for your account:
+
+```typescript
+const history = await client.getTransferHistory({
+  start_time: '1745600642000785050', // Nanoseconds since epoch
+  end_time: '1758891778774100000',   // Nanoseconds since epoch
+});
+
+console.log('Transfers:', history.result);
+```
+
+<Warning>
+  Both `start_time` and `end_time` are **required** for history queries. The SDK will throw an error if either is missing.
+</Warning>
+
+### History Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `start_time` | `string` | Yes | Start time (nanoseconds since epoch) |
+| `end_time` | `string` | Yes | End time (nanoseconds since epoch) |
+| `sub_account_id` | `string` | No | Filter by sub-account |
+| `limit` | `number` | No | Maximum results (pagination) |
+| `cursor` | `string` | No | Pagination cursor |
+
+### Pagination
+
+Query results are paginated:
+
+```typescript
+let cursor: string | undefined;
+let allTransfers: any[] = [];
+
+do {
+  const response = await client.getTransferHistory({
+    start_time: '1745600642000785050',
+    end_time: '1758891778774100000',
+    limit: 100,
+    cursor,
+  });
+
+  allTransfers = allTransfers.concat(response.result);
+  cursor = response.next_cursor;
+} while (cursor);
+
+console.log('Total transfers:', allTransfers.length);
+```
+
+### Filter by Sub-Account
+
+```typescript
+const history = await client.getTransferHistory({
+  start_time: '1745600642000785050',
+  end_time: '1758891778774100000',
+  sub_account_id: 'your-sub-account-id',
+});
+```
+
+## Real-Time Transfer Updates
+
+Use the WebSocket client to receive real-time transfer notifications:
+
+```typescript
+import { GrvtWsClient } from '@grvt/sdk';
+
+const wsClient = new GrvtWsClient({
+  apiKey: process.env.API_KEY!,
+  env: EGrvtEnvironment.TESTNET,
+});
+
+await wsClient.connect();
+
+// Subscribe to transfer updates
+wsClient.subscribeTransferHistory(
+  'main-account-id',
+  (data) => {
+    console.log('New transfer:', data);
+  }
+);
+```
+
+See the [WebSocket Client guide](/guides/websocket-client) for more details.
+
+## Complete Example
+
+```typescript
+import {
+  GrvtClient,
+  EGrvtEnvironment,
+  ECurrency,
+  ETransferType,
+  ITransferMetadata,
+  ETransferProvider,
+  ETransferDirection,
+  EChain,
+} from '@grvt/sdk';
+
+async function executeTransfer() {
+  // Initialize client
+  const client = new GrvtClient({
+    apiKey: process.env.API_KEY!,
+    apiSecret: process.env.API_SECRET!,
+    env: EGrvtEnvironment.TESTNET,
+  });
+
+  try {
+    // Standard transfer
+    const standardTransfer = await client.transfer({
+      from_account_id: 'from-account',
+      from_sub_account_id: '0',
+      to_account_id: 'to-account',
+      to_sub_account_id: '0',
+      currency: ECurrency.USDT,
+      num_tokens: '100',
+      transfer_type: ETransferType.STANDARD,
+    });
+    console.log('Standard transfer:', standardTransfer.transfer_id);
+
+    // Bridge deposit with metadata
+    const metadata: ITransferMetadata = {
+      provider: ETransferProvider.RHINO,
+      direction: ETransferDirection.DEPOSIT,
+      chainid: EChain.TRON,
+      endpoint: 'https://api.trongrid.io',
+      provider_tx_id: '0x1234...',
+    };
+
+    const bridgeTransfer = await client.transfer(
+      {
+        from_account_id: 'from-account',
+        to_account_id: 'to-account',
+        currency: ECurrency.USDT,
+        num_tokens: '50',
+        transfer_type: ETransferType.NON_NATIVE_BRIDGE_DEPOSIT,
+      },
+      metadata
+    );
+    console.log('Bridge transfer:', bridgeTransfer.transfer_id);
+
+    // Query transfer history
+    const history = await client.getTransferHistory({
+      start_time: '1745600642000785050',
+      end_time: '1758891778774100000',
+    });
+    console.log('Transfer history:', history.result.length, 'transfers');
+  } catch (error) {
+    console.error('Transfer failed:', error);
+  }
+}
+
+executeTransfer();
+```
+
+## Error Handling
+
+```typescript
+try {
+  const transfer = await client.transfer({
+    from_account_id: 'from-account',
+    to_account_id: 'to-account',
+    currency: ECurrency.USDT,
+    num_tokens: '100',
+    transfer_type: ETransferType.STANDARD,
+  });
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes('signing requires API secret')) {
+      console.error('API secret is required for transfers');
+    } else if (error.message.includes('transfer_metadata')) {
+      console.error('Use metadata parameter, not transfer_metadata field');
+    } else {
+      console.error('Transfer failed:', error.message);
+    }
+  }
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Use String for Amounts">
+    Always pass amounts as strings to avoid floating-point precision issues:
+
+    ```typescript
+    // Good
+    num_tokens: '100.50'
+
+    // Avoid
+    num_tokens: 100.50.toString()
+    ```
+  </Step>
+
+  <Step title="Include Metadata for Bridge Operations">
+    Always attach metadata for bridge deposits/withdrawals:
+
+    ```typescript
+    const metadata: ITransferMetadata = {
+      provider: ETransferProvider.RHINO,
+      direction: ETransferDirection.DEPOSIT,
+      chainid: EChain.TRON,
+      endpoint: 'https://api.trongrid.io',
+      provider_tx_id: txHash,
+    };
+    ```
+  </Step>
+
+  <Step title="Handle Time Ranges Properly">
+    Always provide both start_time and end_time for history queries:
+
+    ```typescript
+    const history = await client.getTransferHistory({
+      start_time: startTimeInNanoseconds,
+      end_time: endTimeInNanoseconds,
+    });
+    ```
+  </Step>
+
+  <Step title="Use Sub-Account ID '0' for Main Account">
+    Use '0' as the sub-account ID when transferring from/to main accounts:
+
+    ```typescript
+    from_sub_account_id: '0',
+    to_sub_account_id: '0',
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+- Learn about [deposits and withdrawals](/guides/deposits-withdrawals)
+- Explore [WebSocket streaming](/guides/websocket-client)
+- Understand [account management](/guides/account-management)

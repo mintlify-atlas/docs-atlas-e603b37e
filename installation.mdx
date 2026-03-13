@@ -1,0 +1,91 @@
+---
+title: Installation
+description: Install the GRVT TypeScript SDK in your project
+---
+
+The GRVT SDK is published to npm as `@grvt/sdk` and can be installed using your preferred package manager.
+
+## Prerequisites
+
+<Note>
+  The SDK requires **Node.js version 20 or higher**. Make sure your environment meets this requirement before installing.
+</Note>
+
+Check your Node.js version:
+
+```bash
+node --version
+```
+
+## Installation Methods
+
+Choose your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install @grvt/sdk
+```
+
+```bash yarn
+yarn add @grvt/sdk
+```
+
+```bash pnpm
+pnpm add @grvt/sdk
+```
+
+</CodeGroup>
+
+## Dependencies
+
+The SDK will automatically install the following peer dependencies:
+
+- `@grvt/client` - Core Gravity client library
+- `ethers` - Ethereum library for signing and cryptography
+- `ws` - WebSocket client for real-time connections
+- `@metamask/eth-sig-util` - Ethereum signature utilities
+
+You don't need to install these separately unless you're using them directly in your application.
+
+## TypeScript Support
+
+The SDK is written in TypeScript and includes full type definitions out of the box. No additional `@types` packages are needed.
+
+## Verify Installation
+
+After installation, verify that the SDK is properly installed:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+
+console.log('GRVT SDK installed successfully!');
+```
+
+If this imports without errors, you're ready to start using the SDK.
+
+## Version Information
+
+To check which version of the SDK you have installed:
+
+<CodeGroup>
+
+```bash npm
+npm list @grvt/sdk
+```
+
+```bash yarn
+yarn list @grvt/sdk
+```
+
+```bash pnpm
+pnpm list @grvt/sdk
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<Card title="Quick Start" icon="rocket" href="/quickstart">
+  Now that you have the SDK installed, let's make your first API call
+</Card>

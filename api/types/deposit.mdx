@@ -1,0 +1,282 @@
+---
+title: 'Deposit Types'
+description: 'Types and interfaces for deposit operations and approvals'
+---
+
+## IDepositOptions
+
+Options for executing a deposit operation from Layer 1 to GRVT.
+
+```typescript
+interface IDepositOptions {
+  privateKey: string;
+  l1Sender: string;
+  l2Receiver: string;
+  amount: string;
+  chainId: EChain;
+}
+```
+
+### Fields
+
+<ParamField path="privateKey" type="string" required>
+  The private key of the L1 sender for signing transactions
+</ParamField>
+
+<ParamField path="l1Sender" type="string" required>
+  The Ethereum address sending funds on Layer 1
+</ParamField>
+
+<ParamField path="l2Receiver" type="string" required>
+  The GRVT account address receiving funds on Layer 2
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  The amount to deposit (in token units)
+</ParamField>
+
+<ParamField path="chainId" type="EChain" required>
+  The blockchain network to deposit from
+</ParamField>
+
+### Example
+
+```typescript
+import { IDepositOptions, EChain } from '@grvt/sdk';
+
+const depositOptions: IDepositOptions = {
+  privateKey: '0x1234567890abcdef...',
+  l1Sender: '0xYourEthereumAddress',
+  l2Receiver: '0xYourGrvtAccount',
+  amount: '1000000000', // 1000 USDC (6 decimals)
+  chainId: EChain.ETHEREUM
+};
+
+await client.deposit(depositOptions);
+```
+
+---
+
+## IApiDepositApprovalRequest
+
+Request interface for requesting a deposit approval signature from the GRVT API.
+
+```typescript
+interface IApiDepositApprovalRequest {
+  l1Sender: string;
+  l2Receiver: string;
+  l1Token: string;
+  amount: string;
+}
+```
+
+### Fields
+
+<ParamField path="l1Sender" type="string" required>
+  The Ethereum address sending the deposit on L1
+</ParamField>
+
+<ParamField path="l2Receiver" type="string" required>
+  The GRVT account address receiving the deposit on L2
+</ParamField>
+
+<ParamField path="l1Token" type="string" required>
+  The token contract address on L1
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  The amount to deposit (as a string in token units)
+</ParamField>
+
+### Example
+
+```typescript
+const approvalRequest: IApiDepositApprovalRequest = {
+  l1Sender: '0xYourEthAddress',
+  l2Receiver: '0xYourGrvtAccount',
+  l1Token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  amount: '1000000000'
+};
+```
+
+---
+
+## IDepositSignature
+
+Signature data returned from a deposit approval request.
+
+```typescript
+interface IDepositSignature {
+  l1Sender: string;
+  l2Receiver: string;
+  l1Token: string;
+  amount: string;
+  deadline: string;
+  v: number;
+  r: string;
+  s: string;
+}
+```
+
+### Fields
+
+<ParamField path="l1Sender" type="string" required>
+  The L1 sender address from the approval request
+</ParamField>
+
+<ParamField path="l2Receiver" type="string" required>
+  The L2 receiver address from the approval request
+</ParamField>
+
+<ParamField path="l1Token" type="string" required>
+  The L1 token contract address
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  The approved deposit amount
+</ParamField>
+
+<ParamField path="deadline" type="string" required>
+  The Unix timestamp when the signature expires
+</ParamField>
+
+<ParamField path="v" type="number" required>
+  The recovery identifier of the ECDSA signature
+</ParamField>
+
+<ParamField path="r" type="string" required>
+  The r value of the ECDSA signature
+</ParamField>
+
+<ParamField path="s" type="string" required>
+  The s value of the ECDSA signature
+</ParamField>
+
+---
+
+## IDepositApprovalResponse
+
+Response from the deposit approval API endpoint.
+
+```typescript
+interface IDepositApprovalResponse {
+  signature: IDepositSignature;
+}
+```
+
+### Fields
+
+<ParamField path="signature" type="IDepositSignature" required>
+  The deposit approval signature data
+</ParamField>
+
+### Example
+
+```typescript
+const approval: IDepositApprovalResponse = await client.requestDepositApproval({
+  l1Sender: '0xYourAddress',
+  l2Receiver: '0xYourGrvtAccount',
+  l1Token: '0xUSDCAddress',
+  amount: '1000000000'
+});
+
+// Use the signature for the deposit
+const { v, r, s, deadline } = approval.signature;
+```
+
+---
+
+## IDepositContractConfig
+
+Configuration for interacting with deposit bridge contracts.
+
+```typescript
+interface IDepositContractConfig {
+  l1TokenAddress: string;
+  l1BridgeAddress: string;
+  l1BridgeAbi: any[];
+  l1TokenAbi: any[];
+  chainId: number;
+  rpcUrl: string;
+}
+```
+
+### Fields
+
+<ParamField path="l1TokenAddress" type="string" required>
+  The contract address of the token on L1
+</ParamField>
+
+<ParamField path="l1BridgeAddress" type="string" required>
+  The contract address of the deposit bridge on L1
+</ParamField>
+
+<ParamField path="l1BridgeAbi" type="any[]" required>
+  The ABI (Application Binary Interface) of the bridge contract
+</ParamField>
+
+<ParamField path="l1TokenAbi" type="any[]" required>
+  The ABI of the token contract
+</ParamField>
+
+<ParamField path="chainId" type="number" required>
+  The numeric chain ID of the L1 network
+</ParamField>
+
+<ParamField path="rpcUrl" type="string" required>
+  The RPC endpoint URL for the L1 network
+</ParamField>
+
+### Example
+
+```typescript
+import { IDepositContractConfig } from '@grvt/sdk';
+
+const config: IDepositContractConfig = {
+  l1TokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  l1BridgeAddress: '0xBridgeContractAddress',
+  l1BridgeAbi: [...], // Bridge contract ABI
+  l1TokenAbi: [...],  // ERC20 ABI
+  chainId: 1,
+  rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY'
+};
+```
+
+---
+
+## Complete Deposit Flow Example
+
+```typescript
+import {
+  GrvtClient,
+  IDepositOptions,
+  IApiDepositApprovalRequest,
+  IDepositApprovalResponse,
+  EChain
+} from '@grvt/sdk';
+
+const client = new GrvtClient(config);
+
+// Step 1: Request deposit approval
+const approvalRequest: IApiDepositApprovalRequest = {
+  l1Sender: '0xYourEthAddress',
+  l2Receiver: '0xYourGrvtAccount',
+  l1Token: '0xUSDCAddress',
+  amount: '1000000000' // 1000 USDC
+};
+
+const approval: IDepositApprovalResponse = 
+  await client.requestDepositApproval(approvalRequest);
+
+// Step 2: Execute the deposit
+const depositOptions: IDepositOptions = {
+  privateKey: process.env.PRIVATE_KEY!,
+  l1Sender: '0xYourEthAddress',
+  l2Receiver: '0xYourGrvtAccount',
+  amount: '1000000000',
+  chainId: EChain.ETHEREUM
+};
+
+const txHash = await client.executeDeposit(depositOptions, approval.signature);
+console.log('Deposit transaction:', txHash);
+```

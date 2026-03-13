@@ -1,80 +1,252 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get started with the GRVT TypeScript SDK in minutes
 ---
 
-## Get started in three steps
+This guide will help you make your first API call using the GRVT SDK. We'll initialize a client and fetch your funding account summary.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+1. [Installed the SDK](/installation)
+2. Your API credentials:
+   - **API Key**: Your Gravity API key
+   - **API Secret**: Your Gravity API secret (for authenticated requests)
 
-### Step 2: Deploy your changes
+<Warning>
+  Never commit your API credentials to version control. Use environment variables or a secure configuration management system.
+</Warning>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Step-by-Step Guide
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Step title="Import the SDK">
 
-### Step 3: Go live
+First, import the necessary classes and types from the SDK:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+```
 
-## Next steps
+The SDK exports:
+- `GrvtClient` - The main REST API client
+- `GrvtWsClient` - The WebSocket client for real-time data
+- `EGrvtEnvironment` - Enum for environment selection (PRODUCTION, TESTNET, STAGING, DEV)
+- All types and interfaces from `@grvt/client`
 
-Now that you have your docs running, explore these key features:
+</Step>
 
-<CardGroup cols={2}>
+<Step title="Initialize the Client">
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+Create a new instance of `GrvtClient` with your configuration:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+```typescript
+const client = new GrvtClient({
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',
+  env: EGrvtEnvironment.DEV,
+});
+```
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The `apiSecret` is optional but required for operations that need signing (transfers, withdrawals). For read-only operations like getting account summaries, you only need the `apiKey`.
 </Note>
+
+**Environment Options:**
+
+- `EGrvtEnvironment.PRODUCTION` - Live trading environment
+- `EGrvtEnvironment.TESTNET` - Public testing environment  
+- `EGrvtEnvironment.STAGING` - Pre-production testing
+- `EGrvtEnvironment.DEV` - Development environment
+
+</Step>
+
+<Step title="Make Your First API Call">
+
+Let's fetch your funding account summary:
+
+```typescript
+const accountSummary = await client.getFundingAccountSummary();
+console.log('Account Summary:', accountSummary);
+```
+
+This returns information about your funding account, including balances and account details.
+
+</Step>
+
+<Step title="Try More Operations">
+
+Now that you have a working client, try some other common operations:
+
+### Get Sub-Account Summary
+
+```typescript
+const subAccountSummary = await client.getSubAccountSummary({
+  sub_account_id: 'your-sub-account-id',
+});
+```
+
+### Get Current Server Time
+
+```typescript
+const currentTime = await client.getCurrentTime();
+console.log('Server time:', currentTime); // Returns milliseconds since epoch
+```
+
+### Execute a Transfer
+
+```typescript
+import { ECurrency, ETransferType } from '@grvt/sdk';
+
+const transfer = await client.transfer({
+  from_account_id: 'from-account-id',
+  from_sub_account_id: 'from-sub-account-id',
+  to_account_id: 'to-account-id',
+  to_sub_account_id: 'to-sub-account-id',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+  transfer_type: ETransferType.STANDARD,
+});
+```
+
+<Note>
+  The SDK automatically signs transfer and withdrawal requests using your `apiSecret`. You don't need to manually generate signatures unless you want to customize the signing options.
+</Note>
+
+</Step>
+
+</Steps>
+
+## Complete Example
+
+Here's a complete working example that ties everything together:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+
+async function main() {
+  // Initialize the client
+  const client = new GrvtClient({
+    apiKey: process.env.GRVT_API_KEY!,
+    apiSecret: process.env.GRVT_API_SECRET!,
+    env: EGrvtEnvironment.DEV,
+  });
+
+  try {
+    // Get funding account summary
+    const accountSummary = await client.getFundingAccountSummary();
+    console.log('Account Summary:', JSON.stringify(accountSummary, null, 2));
+
+    // Get current server time
+    const serverTime = await client.getCurrentTime();
+    console.log('Server Time:', new Date(serverTime).toISOString());
+
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+main();
+```
+
+## Using Environment Variables
+
+For better security, store your credentials in environment variables:
+
+```bash .env
+GRVT_API_KEY=your-api-key
+GRVT_API_SECRET=your-api-secret
+```
+
+Then load them in your code:
+
+```typescript
+import { config } from 'dotenv';
+config();
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY!,
+  apiSecret: process.env.GRVT_API_SECRET!,
+  env: EGrvtEnvironment.DEV,
+});
+```
+
+<Note>
+  Make sure to add `.env` to your `.gitignore` file to prevent committing secrets.
+</Note>
+
+## WebSocket Quick Start
+
+For real-time data streaming, use the WebSocket client:
+
+```typescript
+import { GrvtWsClient, EGrvtEnvironment } from '@grvt/sdk';
+
+const wsClient = new GrvtWsClient({
+  apiKey: process.env.GRVT_API_KEY!,
+  env: EGrvtEnvironment.DEV,
+});
+
+// Connect to WebSocket
+await wsClient.connect();
+
+// Subscribe to transfer history
+wsClient.subscribeTransferHistory(
+  'main-account-id',
+  (data) => {
+    console.log('Received transfer:', data);
+  },
+  'sub-account-id' // optional
+);
+
+// Disconnect when done
+// wsClient.disconnect();
+```
+
+<Note>
+  The WebSocket client automatically handles reconnection with exponential backoff. Subscriptions need to be manually restored after reconnection.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Account Management" icon="user" href="/guides/account-management">
+    Learn about managing funding accounts and sub-accounts
+  </Card>
+  
+  <Card title="Transfers" icon="exchange" href="/guides/transfers">
+    Execute transfers between accounts with metadata and signing options
+  </Card>
+  
+  <Card title="Deposits & Withdrawals" icon="wallet" href="/guides/deposits-withdrawals">
+    Move funds in and out of the platform
+  </Card>
+  
+  <Card title="WebSocket Streaming" icon="wifi" href="/guides/websocket-client">
+    Subscribe to real-time data feeds
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Authentication Errors
+
+If you receive authentication errors, verify:
+- Your API key and secret are correct
+- You're using the right environment
+- Your API credentials have the necessary permissions
+
+### Type Errors
+
+The SDK is fully typed. If you encounter type errors:
+- Make sure you're using TypeScript 5.0 or higher
+- Check that you're importing types correctly from `@grvt/sdk`
+
+### Connection Issues
+
+For WebSocket connection issues:
+- Verify network connectivity
+- Check that you're using the correct environment
+- Ensure your API key is valid for WebSocket connections

@@ -1,0 +1,99 @@
+---
+title: Introduction
+description: Overview of the GRVT TypeScript SDK for building trading applications on the Gravity platform
+---
+
+The GRVT TypeScript SDK provides a comprehensive interface to interact with the Gravity trading platform. It enables developers to build trading applications with support for both REST API and WebSocket connections for real-time data streaming.
+
+## What is GRVT?
+
+GRVT (Gravity) is a high-performance trading platform that offers:
+
+- **Account Management**: Manage funding accounts and sub-accounts
+- **Transfers**: Execute transfers between accounts with support for various bridge providers
+- **Deposits & Withdrawals**: Move funds in and out of the platform using L1 bridges
+- **Real-time Data**: Subscribe to transfer feeds and account updates via WebSocket
+- **KYA (Know Your Asset)**: Asset verification for Rhino SDA deposits
+
+## Who Should Use This SDK?
+
+This SDK is designed for:
+
+- **Trading Application Developers**: Build custom trading interfaces and bots
+- **Financial Integration Teams**: Integrate Gravity into existing financial systems
+- **Blockchain Developers**: Create applications that interact with cross-chain transfers
+- **Quantitative Traders**: Automate trading strategies with programmatic access
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="REST API Client" icon="code">
+    Full access to Gravity's REST API endpoints for account management, transfers, deposits, and withdrawals
+  </Card>
+  
+  <Card title="WebSocket Client" icon="wifi">
+    Real-time data streaming with automatic reconnection and subscription management
+  </Card>
+  
+  <Card title="Automatic Signing" icon="key">
+    Built-in request signing for transfers and withdrawals using your API secret
+  </Card>
+  
+  <Card title="TypeScript Support" icon="typescript">
+    Full TypeScript support with comprehensive type definitions
+  </Card>
+</CardGroup>
+
+## Supported Environments
+
+The SDK supports multiple Gravity environments:
+
+- **Production**: Live trading environment
+- **Testnet**: Public testing environment
+- **Staging**: Pre-production testing
+- **Dev**: Development environment
+
+<Note>
+  The SDK requires Node.js version 20 or higher.
+</Note>
+
+## What You'll Need
+
+To use the GRVT SDK, you'll need:
+
+1. **API Key**: Obtained from your Gravity account
+2. **API Secret**: Used for signing authenticated requests (optional for read-only operations)
+3. **Account ID**: Your Gravity account identifier
+
+## Architecture
+
+The SDK is built on two main client classes:
+
+### GrvtClient
+
+The REST API client for:
+- Account summaries (funding and sub-accounts)
+- Transfers between accounts
+- Deposits and withdrawals
+- Transaction history queries
+- Chain ID mappings
+- KYA checks
+
+### GrvtWsClient
+
+The WebSocket client for:
+- Real-time transfer feeds
+- Live account updates
+- Event subscriptions
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the SDK using npm, yarn, or pnpm
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with your first API call
+  </Card>
+</CardGroup>

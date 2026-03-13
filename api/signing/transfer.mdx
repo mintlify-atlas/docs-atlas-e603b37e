@@ -1,0 +1,200 @@
+---
+title: "signTransfer"
+description: "Sign a transfer request using EIP-712"
+---
+
+## Overview
+
+The `signTransfer` function creates an EIP-712 signature for transferring tokens between sub-accounts on the GRVT Exchange. This signature is required when submitting a transfer request to the API.
+
+## Function Signature
+
+```typescript
+signTransfer(
+  transfer: IApiTransferRequest,
+  wallet: Wallet,
+  env: EGrvtEnvironment,
+  options?: ISigningOptions
+): Promise<ISignature>
+```
+
+## Parameters
+
+<ParamField path="transfer" type="IApiTransferRequest" required>
+  The transfer request object containing:
+  
+  <Expandable title="properties">
+    <ParamField path="from_account_id" type="string" required>
+      The account ID to transfer from
+    </ParamField>
+    
+    <ParamField path="from_sub_account_id" type="string" required>
+      The sub-account ID to transfer from
+    </ParamField>
+    
+    <ParamField path="to_account_id" type="string" required>
+      The account ID to transfer to
+    </ParamField>
+    
+    <ParamField path="to_sub_account_id" type="string" required>
+      The sub-account ID to transfer to
+    </ParamField>
+    
+    <ParamField path="currency" type="string" required>
+      The currency to transfer (e.g., "USD", "BTC", "ETH")
+    </ParamField>
+    
+    <ParamField path="num_tokens" type="string" required>
+      The number of tokens to transfer. Must be a decimal string with up to 6 decimal places (e.g., "100.50")
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="wallet" type="Wallet" required>
+  An ethers.js Wallet instance used to sign the transfer. The wallet's private key will be used for EIP-712 signing.
+</ParamField>
+
+<ParamField path="env" type="EGrvtEnvironment" required>
+  The GRVT environment (e.g., `EGrvtEnvironment.PROD`, `EGrvtEnvironment.DEV`). This determines the chain ID used in the EIP-712 domain.
+</ParamField>
+
+<ParamField path="options" type="ISigningOptions">
+  Optional signing parameters:
+  
+  <Expandable title="properties">
+    <ParamField path="nonce" type="number">
+      A unique nonce for this signature. If not provided, a random nonce is generated using `GenerateNonce()`.
+    </ParamField>
+    
+    <ParamField path="expiration" type="string">
+      The signature expiration time in nanoseconds. If not provided, defaults to 24 hours from now using `GenerateExpiration()`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="signature" type="ISignature">
+  The EIP-712 signature object containing:
+  
+  <Expandable title="properties">
+    <ResponseField name="r" type="string">
+      The r component of the ECDSA signature (hex string)
+    </ResponseField>
+    
+    <ResponseField name="s" type="string">
+      The s component of the ECDSA signature (hex string)
+    </ResponseField>
+    
+    <ResponseField name="v" type="number">
+      The recovery id of the ECDSA signature
+    </ResponseField>
+    
+    <ResponseField name="signer" type="string">
+      The Ethereum address of the signer (wallet address)
+    </ResponseField>
+    
+    <ResponseField name="nonce" type="number">
+      The nonce used in the signature
+    </ResponseField>
+    
+    <ResponseField name="expiration" type="string">
+      The expiration time in nanoseconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## EIP-712 Structure
+
+The function signs a structured message according to EIP-712 with the following schema:
+
+**Domain:**
+- `name`: "GRVT Exchange"
+- `version`: "0"
+- `chainId`: Environment-specific chain ID
+
+**Primary Type:** `Transfer`
+
+**Message Fields:**
+- `fromAccount` (address): Source account ID
+- `fromSubAccount` (uint64): Source sub-account ID
+- `toAccount` (address): Destination account ID
+- `toSubAccount` (uint64): Destination sub-account ID
+- `tokenCurrency` (uint8): Currency enumeration index
+- `numTokens` (uint64): Token amount in micro-units (6 decimal places)
+- `nonce` (uint32): Unique nonce
+- `expiration` (int64): Expiration timestamp in nanoseconds
+
+## Example
+
+```typescript
+import { signTransfer } from '@grvt/sdk';
+import { Wallet } from 'ethers';
+import { EGrvtEnvironment } from '@grvt/sdk/config';
+
+// Create wallet from private key
+const wallet = new Wallet('0x...');
+
+// Prepare transfer request
+const transferRequest = {
+  from_account_id: '0x1234...',
+  from_sub_account_id: '1',
+  to_account_id: '0x5678...',
+  to_sub_account_id: '2',
+  currency: 'USD',
+  num_tokens: '100.50' // Transfer 100.50 tokens
+};
+
+// Sign the transfer
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  EGrvtEnvironment.PROD
+);
+
+// Use signature in API request
+const request = {
+  ...transferRequest,
+  signature
+};
+
+// Submit to API
+await client.transfer(request);
+```
+
+## Example with Custom Options
+
+```typescript
+import { signTransfer, GenerateNonce, GenerateExpiration } from '@grvt/sdk';
+
+// Custom nonce and expiration
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  EGrvtEnvironment.PROD,
+  {
+    nonce: GenerateNonce(),
+    expiration: GenerateExpiration(48) // 48 hours
+  }
+);
+```
+
+## Validation
+
+The function validates:
+- `num_tokens` is provided (throws error if missing)
+- `num_tokens` has at most one decimal point
+- `num_tokens` has at most 6 decimal places
+- Custom `options` are valid (if provided)
+
+## Errors
+
+- Throws `Error` if `num_tokens` is not provided
+- Throws `Error` if `num_tokens` has more than one decimal point
+- Throws `Error` if `num_tokens` has more than 6 decimal places
+- Throws `Error` if `options` validation fails
+
+## Related
+
+- [signWithdrawal](/api/signing/withdraw) - Sign withdrawal requests
+- [Signing Utilities](/api/signing/utils) - Nonce and expiration generation

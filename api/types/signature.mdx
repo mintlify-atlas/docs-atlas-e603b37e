@@ -1,0 +1,340 @@
+---
+title: 'Signature Types'
+description: 'Types and interfaces for signing operations and EIP-712 signatures'
+---
+
+## ISigningOptions
+
+Options for customizing signature generation for GRVT operations.
+
+```typescript
+interface ISigningOptions {
+  nonce?: number;
+  expiration?: string;
+}
+```
+
+### Fields
+
+<ParamField path="nonce" type="number" optional>
+  A unique number to prevent replay attacks. If not provided, the SDK will fetch the current nonce from the API.
+</ParamField>
+
+<ParamField path="expiration" type="string" optional>
+  Unix timestamp (in seconds) when the signature expires. If not provided, a default expiration will be used.
+</ParamField>
+
+### Example
+
+```typescript
+import { ISigningOptions } from '@grvt/sdk';
+
+// Custom signing options
+const signingOptions: ISigningOptions = {
+  nonce: 12345,
+  expiration: String(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
+};
+
+// Use in order creation
+const order = await client.createOrder(
+  {
+    side: 'buy',
+    size: '1.0',
+    price: '50000'
+  },
+  signingOptions
+);
+
+// Use default options (SDK manages nonce and expiration)
+const orderWithDefaults = await client.createOrder({
+  side: 'sell',
+  size: '0.5',
+  price: '51000'
+});
+```
+
+---
+
+## EIP-712 Domain
+
+The GRVT SDK uses EIP-712 typed structured data signing for secure, human-readable transaction signing.
+
+### EIP712DomainData
+
+```typescript
+interface EIP712DomainData {
+  name: string;
+  version: string;
+  chainId: number;
+}
+```
+
+<ParamField path="name" type="string" required>
+  The name of the signing domain (e.g., "GRVT Exchange")
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  The version of the signing domain
+</ParamField>
+
+<ParamField path="chainId" type="number" required>
+  The chain ID of the GRVT environment
+</ParamField>
+
+### Default Domain
+
+```typescript
+const domain: EIP712DomainData = {
+  name: 'GRVT Exchange',
+  version: '0',
+  chainId: 1, // Varies by environment
+};
+```
+
+### Domain Configuration
+
+The domain configuration changes based on the environment:
+
+- **Production**: `chainId: 325`
+- **Testnet**: `chainId: 326`
+- **Staging**: `chainId: 327`
+- **Dev**: `chainId: 327`
+
+---
+
+## Primary Types
+
+The SDK supports signing various operation types using EIP-712 structured data.
+
+```typescript
+const PrimaryType = {
+  // Account Operations
+  CreateAccount: 'CreateAccount',
+  CreateAccountWithSubAccount: 'CreateAccountWithSubAccount',
+  SetAccountSignerPermissions: 'SetAccountSignerPermissions',
+  AddAccountSigner: 'AddAccountSigner',
+  AddTransferAccount: 'AddTransferAccount',
+  AddWithdrawalAddress: 'AddWithdrawalAddress',
+  CreateSubAccount: 'CreateSubAccount',
+  RemoveAccountSigner: 'RemoveAccountSigner',
+  RemoveTransferAccount: 'RemoveTransferAccount',
+  RemoveWithdrawalAddress: 'RemoveWithdrawalAddress',
+  SetAccountMultiSigThreshold: 'SetAccountMultiSigThreshold',
+
+  // SubAccount Operations
+  AddSubAccountSigner: 'AddSubAccountSigner',
+  RemoveSubAccountSigner: 'RemoveSubAccountSigner',
+  SetSubAccountMarginType: 'SetSubAccountMarginType',
+  SetSubAccountSignerPermissions: 'SetSubAccountSignerPermissions',
+
+  // Wallet Recovery
+  AddRecoveryAddress: 'AddRecoveryAddress',
+  RemoveRecoveryAddress: 'RemoveRecoveryAddress',
+  RecoverAddress: 'RecoverAddress',
+
+  // Session Key
+  AddSessionKey: 'AddSessionKey',
+
+  // Transfer Operations
+  Deposit: 'Deposit',
+  Transfer: 'Transfer',
+  Withdrawal: 'Withdrawal',
+
+  // Trade Operations
+  Order: 'Order',
+};
+```
+
+---
+
+## Common Signature Patterns
+
+### Account Operations
+
+Account-related operations typically require these fields:
+
+```typescript
+{
+  accountID: string;      // Ethereum address
+  nonce: number;          // Unique nonce
+  expiration: string;     // Unix timestamp
+  // ... operation-specific fields
+}
+```
+
+### SubAccount Operations
+
+SubAccount operations use a numeric ID:
+
+```typescript
+{
+  subAccountID: string;   // Numeric sub-account ID
+  nonce: number;
+  expiration: string;
+  // ... operation-specific fields
+}
+```
+
+### Transfer Operations
+
+#### Deposit
+
+```typescript
+{
+  fromEthAddress: string;  // L1 sender
+  toAccount: string;       // L2 receiver
+  tokenCurrency: number;   // Currency enum value
+  numTokens: string;       // Amount to deposit
+  nonce: number;
+  expiration: string;
+}
+```
+
+#### Withdrawal
+
+```typescript
+{
+  fromAccount: string;     // L2 sender
+  toEthAddress: string;    // L1 receiver
+  tokenCurrency: number;   // Currency enum value
+  numTokens: string;       // Amount to withdraw
+  nonce: number;
+  expiration: string;
+}
+```
+
+#### Transfer
+
+```typescript
+{
+  fromAccount: string;
+  fromSubAccount: string;
+  toAccount: string;
+  toSubAccount: string;
+  tokenCurrency: number;
+  numTokens: string;
+  nonce: number;
+  expiration: string;
+}
+```
+
+### Order Operations
+
+```typescript
+{
+  subAccountID: string;
+  isMarket: boolean;
+  timeInForce: number;
+  postOnly: boolean;
+  reduceOnly: boolean;
+  legs: OrderLeg[];
+  nonce: number;
+  expiration: string;
+}
+
+interface OrderLeg {
+  assetID: string;
+  contractSize: string;
+  limitPrice: string;
+  isBuyingContract: boolean;
+}
+```
+
+---
+
+## Example: Signing an Order
+
+```typescript
+import { GrvtClient, ISigningOptions } from '@grvt/sdk';
+
+const client = new GrvtClient(config);
+
+// Create a signed order with custom options
+const signingOptions: ISigningOptions = {
+  expiration: String(Math.floor(Date.now() / 1000) + 300) // 5 minutes
+};
+
+const order = await client.createOrder(
+  {
+    subAccountId: '1',
+    instrument: 'BTC_USD_Perp',
+    side: 'buy',
+    size: '1.0',
+    price: '50000',
+    orderType: 'limit',
+    timeInForce: 'GTC'
+  },
+  signingOptions
+);
+
+console.log('Order created with signature:', order);
+```
+
+---
+
+## Example: Manual Signing
+
+```typescript
+import { ethers } from 'ethers';
+
+// The SDK handles this internally, but you can also sign manually
+const wallet = new ethers.Wallet(privateKey);
+
+const domain = {
+  name: 'GRVT Exchange',
+  version: '0',
+  chainId: 326 // Testnet
+};
+
+const types = {
+  Order: [
+    { name: 'subAccountID', type: 'uint64' },
+    { name: 'isMarket', type: 'bool' },
+    { name: 'timeInForce', type: 'uint8' },
+    { name: 'postOnly', type: 'bool' },
+    { name: 'reduceOnly', type: 'bool' },
+    { name: 'legs', type: 'OrderLeg[]' },
+    { name: 'nonce', type: 'uint32' },
+    { name: 'expiration', type: 'int64' },
+  ],
+  OrderLeg: [
+    { name: 'assetID', type: 'uint256' },
+    { name: 'contractSize', type: 'uint64' },
+    { name: 'limitPrice', type: 'uint64' },
+    { name: 'isBuyingContract', type: 'bool' },
+  ],
+};
+
+const value = {
+  subAccountID: '1',
+  isMarket: false,
+  timeInForce: 1,
+  postOnly: false,
+  reduceOnly: false,
+  legs: [{
+    assetID: '123',
+    contractSize: '1000000000',
+    limitPrice: '50000000000',
+    isBuyingContract: true
+  }],
+  nonce: 12345,
+  expiration: '1735689600'
+};
+
+const signature = await wallet._signTypedData(domain, types, value);
+console.log('Signature:', signature);
+```
+
+---
+
+## Best Practices
+
+1. **Nonce Management**: Let the SDK manage nonces automatically unless you have specific requirements.
+
+2. **Expiration Times**: Use reasonable expiration times (e.g., 5-60 minutes for orders, 1-24 hours for account operations).
+
+3. **Signature Verification**: The GRVT platform verifies all signatures on-chain to ensure authenticity.
+
+4. **Replay Protection**: Each signature includes a nonce to prevent replay attacks.
+
+5. **Security**: Never share your private key. The signing happens locally in the SDK.

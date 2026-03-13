@@ -1,0 +1,232 @@
+---
+title: "Signing Utilities"
+description: "Helper functions for generating nonces and expirations"
+---
+
+## Overview
+
+The signing utilities provide helper functions for generating nonces and expiration timestamps used in EIP-712 signatures for the GRVT Exchange.
+
+## GenerateNonce
+
+Generates a random nonce value for use in signature requests.
+
+### Function Signature
+
+```typescript
+GenerateNonce(): number
+```
+
+### Returns
+
+<ResponseField name="nonce" type="number">
+  A random nonce value between 0 and 1,000,000,000 (1e9)
+</ResponseField>
+
+### Description
+
+The `GenerateNonce` function creates a random nonce that ensures uniqueness for each signature request. Nonces prevent replay attacks by making each signed message unique.
+
+### Algorithm
+
+The nonce is generated using:
+```typescript
+Math.floor(Math.random() * 1e9)
+```
+
+This produces a random integer between 0 and 999,999,999.
+
+### Example
+
+```typescript
+import { GenerateNonce } from '@grvt/sdk';
+
+const nonce = GenerateNonce();
+console.log(nonce); // e.g., 742831956
+
+// Use in signing options
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  env,
+  { nonce }
+);
+```
+
+### Best Practices
+
+- Generate a new nonce for each signature request
+- Store nonces to prevent accidental reuse
+- Nonces are automatically generated if not provided in signing options
+
+---
+
+## GenerateExpiration
+
+Generates an expiration timestamp in nanoseconds for signature validity.
+
+### Function Signature
+
+```typescript
+GenerateExpiration(expirationInHours?: number): string
+```
+
+### Parameters
+
+<ParamField path="expirationInHours" type="number" default="24">
+  The number of hours from now until the signature expires. Defaults to 24 hours.
+</ParamField>
+
+### Returns
+
+<ResponseField name="expiration" type="string">
+  The expiration timestamp in nanoseconds as a string (e.g., "1710345600000000000")
+</ResponseField>
+
+### Description
+
+The `GenerateExpiration` function creates a timestamp representing when a signature should expire. The timestamp is in nanoseconds and calculated from the current time plus the specified number of hours.
+
+### Algorithm
+
+The expiration is calculated using:
+```typescript
+(Date.now() + expirationInHours * 60 * 60 * 1000) * 1e6
+```
+
+Breakdown:
+1. `Date.now()` - Current time in milliseconds
+2. `+ expirationInHours * 60 * 60 * 1000` - Add hours converted to milliseconds
+3. `* 1e6` - Convert milliseconds to nanoseconds
+
+### Example
+
+```typescript
+import { GenerateExpiration } from '@grvt/sdk';
+
+// Default: 24 hours from now
+const expiration = GenerateExpiration();
+console.log(expiration); // e.g., "1710345600000000000"
+
+// Custom: 48 hours from now
+const longExpiration = GenerateExpiration(48);
+
+// Short-lived: 1 hour from now
+const shortExpiration = GenerateExpiration(1);
+
+// Use in signing options
+const signature = await signWithdrawal(
+  withdrawalRequest,
+  wallet,
+  env,
+  { expiration: GenerateExpiration(12) } // 12 hours
+);
+```
+
+### Common Expiration Periods
+
+| Use Case | Hours | Description |
+|----------|-------|-------------|
+| Short-lived operations | 1-4 | For immediate actions requiring quick expiration |
+| Standard operations | 24 | Default recommendation for most use cases |
+| Long-lived operations | 48-72 | For operations that may take longer to execute |
+| Extended validity | 168 | One week for specific long-term use cases |
+
+### Best Practices
+
+- Use shorter expirations (1-4 hours) for sensitive operations like withdrawals
+- Use default 24 hours for standard transfers and operations
+- Longer expirations (48+ hours) should only be used when necessary
+- Consider time zones and potential network delays when setting expiration times
+- Never use excessively long expiration periods (e.g., months or years)
+
+---
+
+## Complete Example
+
+```typescript
+import { 
+  signTransfer, 
+  GenerateNonce, 
+  GenerateExpiration 
+} from '@grvt/sdk';
+import { Wallet } from 'ethers';
+import { EGrvtEnvironment } from '@grvt/sdk/config';
+
+const wallet = new Wallet('0x...');
+
+// Generate utilities
+const nonce = GenerateNonce();
+const expiration = GenerateExpiration(24);
+
+console.log('Nonce:', nonce);
+console.log('Expiration:', expiration);
+
+// Use in signature
+const transferRequest = {
+  from_account_id: '0x1234...',
+  from_sub_account_id: '1',
+  to_account_id: '0x5678...',
+  to_sub_account_id: '2',
+  currency: 'USD',
+  num_tokens: '100.50'
+};
+
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  EGrvtEnvironment.PROD,
+  {
+    nonce,
+    expiration
+  }
+);
+
+console.log('Signature:', signature);
+```
+
+## Auto-Generation
+
+Both utilities are automatically used by signing functions when not explicitly provided:
+
+```typescript
+// This automatically generates nonce and expiration
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  env
+  // No options provided - nonce and expiration auto-generated
+);
+```
+
+Equivalent to:
+
+```typescript
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  env,
+  {
+    nonce: GenerateNonce(),
+    expiration: GenerateExpiration(24)
+  }
+);
+```
+
+## Security Considerations
+
+### Nonces
+- Never reuse nonces for different operations
+- Random nonces are sufficient for most use cases
+- Consider sequential nonces for systems requiring strict ordering
+
+### Expirations
+- Shorter expirations reduce the window for replay attacks
+- Balance between security and operational flexibility
+- Ensure client clocks are synchronized to avoid premature expiration
+- Server-side validation will reject expired signatures
+
+## Related
+
+- [signTransfer](/api/signing/transfer) - Sign transfer requests
+- [signWithdrawal](/api/signing/withdraw) - Sign withdrawal requests

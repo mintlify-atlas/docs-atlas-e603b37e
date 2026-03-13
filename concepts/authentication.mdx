@@ -1,0 +1,195 @@
+---
+title: Authentication
+description: Learn how to authenticate with the GRVT API using API keys and secrets
+---
+
+## Overview
+
+The GRVT SDK uses a cookie-based authentication system with API keys. When you initialize a client with your API credentials, the SDK automatically manages authentication cookies for all API requests.
+
+## API Credentials
+
+Authentication requires two credentials:
+
+- **API Key**: A public identifier for your account
+- **API Secret**: A private key used for signing operations (optional for read-only operations)
+
+<Warning>
+Never share your API secret or commit it to version control. Store it securely in environment variables.
+</Warning>
+
+## How It Works
+
+The authentication flow follows these steps:
+
+1. **Cookie Exchange**: The SDK exchanges your API key for a session cookie
+2. **Automatic Refresh**: Cookies are automatically refreshed before expiration (5 second buffer)
+3. **Request Authentication**: The cookie is included in all authenticated API requests
+
+### Cookie Lifecycle
+
+The SDK manages cookies automatically:
+
+```typescript
+// Cookie is automatically obtained on first authenticated request
+const summary = await client.getFundingAccountSummary();
+
+// Cookie is automatically refreshed when needed
+const transfers = await client.getTransferHistory({
+  start_time: '1234567890',
+  end_time: '1234567899'
+});
+```
+
+From `src/client/GrvtBaseClient.ts:22-37`:
+
+```typescript
+protected shouldRefreshCookie(): boolean {
+  if (!this.config.apiKey) {
+    return false;
+  }
+
+  const timeTillExpiration = this.cookie ? this.cookie.expires - Date.now() / 1000 : null;
+  const isCookieFresh = timeTillExpiration !== null && timeTillExpiration > 5;
+
+  if (!isCookieFresh) {
+    console.info(
+      `Cookie should be refreshed, time till expiration: ${timeTillExpiration} seconds`
+    );
+  }
+
+  return !isCookieFresh;
+}
+```
+
+## Client Initialization
+
+### With API Key Only (Read-Only)
+
+For read-only operations, you only need an API key:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  env: EGrvtEnvironment.TESTNET
+});
+
+// Only read operations are available
+const summary = await client.getFundingAccountSummary();
+```
+
+### With API Key and Secret (Full Access)
+
+For operations that require signing (transfers, withdrawals), provide both credentials:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment.TESTNET
+});
+
+// All operations are available
+await client.transfer({
+  from_account_id: '0x...',
+  to_account_id: '0x...',
+  currency: 'USDC',
+  num_tokens: '100.00'
+});
+```
+
+<Note>
+The API secret is used to create an Ethereum wallet for signing operations. It should be a valid private key in hexadecimal format.
+</Note>
+
+## Authentication Headers
+
+Once authenticated, the SDK automatically includes these headers in requests:
+
+```typescript
+headers: {
+  'Content-Type': 'application/json',
+  'Cookie': 'gravity=<session_cookie>',
+  'X-Grvt-Account-Id': '<account_id>' // if available
+}
+```
+
+From `src/client/GrvtBaseClient.ts:128-141`:
+
+```typescript
+private getAuthenticatedHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (this.cookie) {
+    headers['Cookie'] = `gravity=${this.cookie.gravity}`;
+    if (this.cookie.XGrvtAccountId) {
+      headers['X-Grvt-Account-Id'] = this.cookie.XGrvtAccountId;
+    }
+  }
+
+  return headers;
+}
+```
+
+## Login Endpoint
+
+The SDK exchanges API keys for session cookies via the login endpoint:
+
+```
+POST https://edge.{domain}/auth/api_key/login
+```
+
+From `src/utils/cookie.ts:17-24`:
+
+```typescript
+const response = await fetch(path, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ api_key: apiKey }),
+});
+```
+
+## Best Practices
+
+<Info>
+**Recommended practices for API credentials:**
+
+1. Store credentials in environment variables
+2. Never commit secrets to version control
+3. Use different API keys for different environments
+4. Rotate API keys periodically
+5. Use read-only API keys when signing is not required
+</Info>
+
+## Error Handling
+
+Handle authentication errors gracefully:
+
+```typescript
+try {
+  const client = new GrvtClient({
+    apiKey: process.env.GRVT_API_KEY,
+    apiSecret: process.env.GRVT_API_SECRET,
+    env: EGrvtEnvironment.TESTNET
+  });
+  
+  const summary = await client.getFundingAccountSummary();
+} catch (error) {
+  if (error.message.includes('Invalid response for cookie')) {
+    console.error('Authentication failed - check your API credentials');
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [environments](/concepts/environments) and their configurations
+- Understand [EIP-712 signing](/concepts/signing) for transfers and withdrawals

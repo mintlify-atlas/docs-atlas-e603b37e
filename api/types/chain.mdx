@@ -1,0 +1,183 @@
+---
+title: 'Chain Types'
+description: 'Supported blockchain networks for deposits and withdrawals'
+---
+
+## EChain
+
+Enum defining all supported blockchain networks on the GRVT platform.
+
+```typescript
+enum EChain {
+  // Mainnet Networks
+  ARBITRUM_ONE = '42161',
+  BNB_SMART_CHAIN = '56',
+  BASE = '8453',
+  ETHEREUM = '1',
+  POLYGON = '137',
+  POLYGON_ZKEVM = '1101',
+  ZKSYNC_ERA = '324',
+  SOLANA = 'solana',
+  TRON = 'tron',
+  KAIA = '8217',
+
+  // Testnet Networks
+  ARBITRUM_SEPOLIA = '421614',
+  BNB_TESTNET = '97',
+  BASE_SEPOLIA = '84532',
+  ETHEREUM_SEPOLIA = '11155111',
+  POLYGON_AMOY = '80002',
+  POLYGON_ZKEVM_CARDONA_TEST = '2442',
+  ZKSYNC_SEPOLIA = '300',
+  SOLANA_TESTNET = 'solana_test',
+  TRON_TESTNET = 'tron_test',
+  KAIA_TESTNET = '1001',
+}
+```
+
+## Mainnet Networks
+
+Production blockchain networks for live trading with real assets.
+
+### EVM-Compatible Chains
+
+<ResponseField name="ETHEREUM" type="string" value="1">
+  Ethereum Mainnet - The main Ethereum network
+</ResponseField>
+
+<ResponseField name="ARBITRUM_ONE" type="string" value="42161">
+  Arbitrum One - Ethereum Layer 2 optimistic rollup
+</ResponseField>
+
+<ResponseField name="BASE" type="string" value="8453">
+  Base - Coinbase's Ethereum Layer 2 network
+</ResponseField>
+
+<ResponseField name="POLYGON" type="string" value="137">
+  Polygon PoS - Ethereum sidechain for fast, low-cost transactions
+</ResponseField>
+
+<ResponseField name="POLYGON_ZKEVM" type="string" value="1101">
+  Polygon zkEVM - Zero-knowledge Ethereum Virtual Machine
+</ResponseField>
+
+<ResponseField name="ZKSYNC_ERA" type="string" value="324">
+  zkSync Era - Zero-knowledge rollup Layer 2
+</ResponseField>
+
+<ResponseField name="BNB_SMART_CHAIN" type="string" value="56">
+  BNB Smart Chain - Binance's EVM-compatible blockchain
+</ResponseField>
+
+<ResponseField name="KAIA" type="string" value="8217">
+  Kaia - High-performance blockchain network
+</ResponseField>
+
+### Non-EVM Chains
+
+<ResponseField name="SOLANA" type="string" value="solana">
+  Solana Mainnet - High-performance blockchain with low transaction costs
+</ResponseField>
+
+<ResponseField name="TRON" type="string" value="tron">
+  TRON Mainnet - Blockchain focused on content sharing and entertainment
+</ResponseField>
+
+## Testnet Networks
+
+Test blockchain networks for development and testing without real assets.
+
+### EVM-Compatible Testnets
+
+<ResponseField name="ETHEREUM_SEPOLIA" type="string" value="11155111">
+  Ethereum Sepolia - Ethereum's primary testnet
+</ResponseField>
+
+<ResponseField name="ARBITRUM_SEPOLIA" type="string" value="421614">
+  Arbitrum Sepolia - Arbitrum's testnet network
+</ResponseField>
+
+<ResponseField name="BASE_SEPOLIA" type="string" value="84532">
+  Base Sepolia - Base's testnet network
+</ResponseField>
+
+<ResponseField name="POLYGON_AMOY" type="string" value="80002">
+  Polygon Amoy - Polygon's testnet network
+</ResponseField>
+
+<ResponseField name="POLYGON_ZKEVM_CARDONA_TEST" type="string" value="2442">
+  Polygon zkEVM Cardona - Polygon zkEVM testnet
+</ResponseField>
+
+<ResponseField name="ZKSYNC_SEPOLIA" type="string" value="300">
+  zkSync Sepolia - zkSync Era testnet
+</ResponseField>
+
+<ResponseField name="BNB_TESTNET" type="string" value="97">
+  BNB Testnet - BNB Smart Chain testnet
+</ResponseField>
+
+<ResponseField name="KAIA_TESTNET" type="string" value="1001">
+  Kaia Testnet - Kaia blockchain testnet
+</ResponseField>
+
+### Non-EVM Testnets
+
+<ResponseField name="SOLANA_TESTNET" type="string" value="solana_test">
+  Solana Testnet - Solana's testing environment
+</ResponseField>
+
+<ResponseField name="TRON_TESTNET" type="string" value="tron_test">
+  TRON Testnet - TRON's testing environment
+</ResponseField>
+
+## Example Usage
+
+```typescript
+import { EChain } from '@grvt/sdk';
+
+// Deposit from Ethereum mainnet
+await client.deposit({
+  chainId: EChain.ETHEREUM,
+  currency: 'USDC',
+  amount: '1000'
+});
+
+// Deposit from Arbitrum
+await client.deposit({
+  chainId: EChain.ARBITRUM_ONE,
+  currency: 'USDC',
+  amount: '500'
+});
+
+// Use testnet for development
+await client.deposit({
+  chainId: EChain.ETHEREUM_SEPOLIA,
+  currency: 'USDC',
+  amount: '100'
+});
+
+// Solana deposits
+await client.deposit({
+  chainId: EChain.SOLANA,
+  currency: 'SOL',
+  amount: '10'
+});
+```
+
+## Chain ID Reference
+
+The enum values correspond to standard blockchain chain IDs:
+
+| Network | Chain ID | Type |
+|---------|----------|------|
+| Ethereum | `1` | EVM |
+| BNB Smart Chain | `56` | EVM |
+| Polygon | `137` | EVM |
+| zkSync Era | `324` | EVM |
+| Polygon zkEVM | `1101` | EVM |
+| Base | `8453` | EVM |
+| Kaia | `8217` | EVM |
+| Arbitrum One | `42161` | EVM |
+| Solana | `solana` | Non-EVM |
+| TRON | `tron` | Non-EVM |

@@ -1,0 +1,248 @@
+---
+title: Using the REST Client
+description: Learn how to use GrvtClient for REST API operations including authentication, configuration, and making API calls
+---
+
+## Overview
+
+The `GrvtClient` class provides a comprehensive interface to interact with the GRVT REST API. It handles authentication, request signing, and provides methods for trading operations, transfers, deposits, and withdrawals.
+
+## Installation
+
+```bash
+npm install @grvt/sdk
+```
+
+## Initialization
+
+<Steps>
+  <Step title="Import the SDK">
+    Import the necessary classes and types from the SDK:
+
+    ```typescript
+    import { GrvtClient, EGrvtEnvironment } from '@grvt/sdk';
+    ```
+  </Step>
+
+  <Step title="Configure the Client">
+    Create a new client instance with your API credentials:
+
+    ```typescript
+    const client = new GrvtClient({
+      apiKey: 'your-api-key',
+      apiSecret: 'your-api-secret',  // Optional, required for signing operations
+      env: EGrvtEnvironment.TESTNET,
+    });
+    ```
+
+    <Note>
+      The `apiSecret` is only required if you want the SDK to automatically sign requests. If you prefer to sign requests manually, you can omit this field.
+    </Note>
+  </Step>
+</Steps>
+
+## Configuration Options
+
+The `IGrvtConfig` interface accepts the following parameters:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `apiKey` | `string` | Yes | Your API key for authentication |
+| `apiSecret` | `string` | No | Your API secret for signing operations |
+| `tradingAccountId` | `string` | No | Default trading account ID |
+| `env` | `EGrvtEnvironment` | Yes | Environment to connect to |
+
+### Available Environments
+
+```typescript
+enum EGrvtEnvironment {
+  PRODUCTION = 'PRODUCTION',  // grvt.io
+  TESTNET = 'TESTNET',        // testnet.grvt.io
+  STAGING = 'STAGING',        // staging.gravitymarkets.io
+  DEV = 'DEV',                // dev.gravitymarkets.io
+}
+```
+
+## Authentication
+
+The SDK uses cookie-based authentication. When you initialize the client with an API key, it automatically:
+
+1. Obtains an authentication cookie from the API
+2. Refreshes the cookie automatically when it expires (5 seconds before expiration)
+3. Includes the cookie in all authenticated requests
+
+```typescript
+// Authentication is handled automatically
+const accountSummary = await client.getFundingAccountSummary();
+```
+
+<Warning>
+  Keep your API secret secure and never commit it to version control. Use environment variables or secure secret management.
+</Warning>
+
+## Making API Calls
+
+### Get Server Time
+
+Retrieve the current server time in milliseconds since epoch:
+
+```typescript
+const currentTime = await client.getCurrentTime();
+console.log('Server time:', currentTime); // Example: 1747397398409
+```
+
+### Get Funding Account Summary
+
+Retrieve information about your funding account:
+
+```typescript
+const fundingAccount = await client.getFundingAccountSummary();
+console.log('Funding account:', fundingAccount);
+```
+
+### Get Sub-Account Summary
+
+Retrieve information about a specific sub-account:
+
+```typescript
+const subAccount = await client.getSubAccountSummary({
+  sub_account_id: 'your-sub-account-id',
+});
+console.log('Sub-account:', subAccount);
+```
+
+## Request Signing
+
+Some operations (transfers, withdrawals) require signed requests. The SDK can automatically sign requests if you provide an `apiSecret`:
+
+```typescript
+const client = new GrvtClient({
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',  // Required for automatic signing
+  env: EGrvtEnvironment.TESTNET,
+});
+
+// The SDK automatically signs this request
+const result = await client.withdraw({
+  from_account_id: 'your-account-id',
+  to_eth_address: 'destination-address',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+});
+```
+
+### Manual Signing
+
+If you prefer to sign requests manually, you can provide the signature directly:
+
+```typescript
+import { signTransfer } from '@grvt/sdk/signing';
+import { Wallet } from 'ethers';
+
+const wallet = new Wallet('your-private-key');
+const request = {
+  from_account_id: 'from-account',
+  to_account_id: 'to-account',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+  transfer_type: ETransferType.STANDARD,
+};
+
+// Sign manually
+const signature = await signTransfer(request, wallet, EGrvtEnvironment.TESTNET);
+request.signature = signature;
+
+// Pass the signed request
+const result = await client.transfer(request);
+```
+
+### Signing Options
+
+You can customize the signature generation with `ISigningOptions`:
+
+```typescript
+const signingOptions = {
+  nonce: 12345,                    // Optional: Must be non-negative
+  expiration: '1746093221289693252' // Optional: Must be within 30 days (in nanoseconds)
+};
+
+const result = await client.transfer(
+  {
+    from_account_id: 'from-account',
+    to_account_id: 'to-account',
+    currency: ECurrency.USDT,
+    num_tokens: '100',
+    transfer_type: ETransferType.STANDARD,
+  },
+  undefined, // metadata
+  signingOptions
+);
+```
+
+<Note>
+  If you don't provide signing options, the SDK will:
+  - Generate a random nonce
+  - Set expiration to 24 hours from now
+</Note>
+
+## Error Handling
+
+Always wrap API calls in try-catch blocks:
+
+```typescript
+try {
+  const result = await client.getFundingAccountSummary();
+  console.log('Success:', result);
+} catch (error) {
+  if (error instanceof Error) {
+    console.error('Error:', error.message);
+  }
+}
+```
+
+## Complete Example
+
+```typescript
+import { GrvtClient, EGrvtEnvironment, ECurrency, ETransferType } from '@grvt/sdk';
+
+async function main() {
+  // Initialize client
+  const client = new GrvtClient({
+    apiKey: process.env.API_KEY!,
+    apiSecret: process.env.API_SECRET!,
+    env: EGrvtEnvironment.TESTNET,
+  });
+
+  try {
+    // Get account information
+    const fundingAccount = await client.getFundingAccountSummary();
+    console.log('Funding account:', fundingAccount);
+
+    // Get server time
+    const serverTime = await client.getCurrentTime();
+    console.log('Server time:', serverTime);
+
+    // Transfer funds
+    const transfer = await client.transfer({
+      from_account_id: 'from-account',
+      from_sub_account_id: '0',
+      to_account_id: 'to-account',
+      to_sub_account_id: '0',
+      currency: ECurrency.USDT,
+      num_tokens: '100',
+      transfer_type: ETransferType.STANDARD,
+    });
+    console.log('Transfer:', transfer);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+main();
+```
+
+## Next Steps
+
+- Learn about [WebSocket streaming](/guides/websocket-client)
+- Explore [transfer operations](/guides/transfers)
+- Understand [deposits and withdrawals](/guides/deposits-withdrawals)

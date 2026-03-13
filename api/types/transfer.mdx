@@ -1,0 +1,169 @@
+---
+title: 'Transfer Types'
+description: 'Types and interfaces for transfer operations and metadata'
+---
+
+## ITransferMetadata
+
+Metadata interface for tracking transfer operations (deposits and withdrawals).
+
+```typescript
+interface ITransferMetadata {
+  provider: ETransferProvider;
+  direction: ETransferDirection;
+  chainid: EChain;
+  endpoint: string;
+  provider_tx_id?: string;
+  provider_ref_id?: string;
+  [key: string]: any; // allows extra properties
+}
+```
+
+### Fields
+
+<ParamField path="provider" type="ETransferProvider" required>
+  The transfer provider handling the operation
+</ParamField>
+
+<ParamField path="direction" type="ETransferDirection" required>
+  The direction of the transfer (deposit or withdrawal)
+</ParamField>
+
+<ParamField path="chainid" type="EChain" required>
+  The blockchain network used for the transfer
+</ParamField>
+
+<ParamField path="endpoint" type="string" required>
+  The API endpoint for the transfer provider
+</ParamField>
+
+<ParamField path="provider_tx_id" type="string" optional>
+  Transaction ID from the transfer provider
+</ParamField>
+
+<ParamField path="provider_ref_id" type="string" optional>
+  Reference ID from the transfer provider
+</ParamField>
+
+<ParamField path="[key: string]" type="any" optional>
+  Additional custom properties can be added as needed
+</ParamField>
+
+### Example
+
+```typescript
+import { ITransferMetadata, ETransferProvider, ETransferDirection, EChain } from '@grvt/sdk';
+
+const metadata: ITransferMetadata = {
+  provider: ETransferProvider.RHINO,
+  direction: ETransferDirection.DEPOSIT,
+  chainid: EChain.ETHEREUM,
+  endpoint: 'https://api.rhino.fi',
+  provider_tx_id: '0xabc123...',
+  provider_ref_id: 'ref_12345'
+};
+```
+
+---
+
+## ETransferProvider
+
+Enum defining supported transfer providers.
+
+```typescript
+enum ETransferProvider {
+  RHINO = 'rhino'
+}
+```
+
+### Values
+
+<ResponseField name="RHINO" type="string" value="rhino">
+  Rhino.fi - Cross-chain bridge and transfer provider
+</ResponseField>
+
+### Example
+
+```typescript
+import { ETransferProvider } from '@grvt/sdk';
+
+const provider = ETransferProvider.RHINO;
+```
+
+---
+
+## ETransferDirection
+
+Enum defining the direction of transfer operations.
+
+```typescript
+enum ETransferDirection {
+  DEPOSIT = 'deposit',
+  WITHDRAWAL = 'withdrawal'
+}
+```
+
+### Values
+
+<ResponseField name="DEPOSIT" type="string" value="deposit">
+  Depositing funds into the GRVT platform
+</ResponseField>
+
+<ResponseField name="WITHDRAWAL" type="string" value="withdrawal">
+  Withdrawing funds from the GRVT platform
+</ResponseField>
+
+### Example
+
+```typescript
+import { ETransferDirection } from '@grvt/sdk';
+
+// Check transfer direction
+if (metadata.direction === ETransferDirection.DEPOSIT) {
+  console.log('Processing deposit');
+} else if (metadata.direction === ETransferDirection.WITHDRAWAL) {
+  console.log('Processing withdrawal');
+}
+```
+
+---
+
+## Complete Example
+
+```typescript
+import {
+  ITransferMetadata,
+  ETransferProvider,
+  ETransferDirection,
+  EChain
+} from '@grvt/sdk';
+
+// Create deposit metadata
+const depositMetadata: ITransferMetadata = {
+  provider: ETransferProvider.RHINO,
+  direction: ETransferDirection.DEPOSIT,
+  chainid: EChain.ARBITRUM_ONE,
+  endpoint: 'https://api.rhino.fi/deposit',
+  provider_tx_id: '0x1234567890abcdef',
+  provider_ref_id: 'dep_abc123',
+  // Custom properties
+  userId: 'user_789',
+  timestamp: Date.now()
+};
+
+// Create withdrawal metadata
+const withdrawalMetadata: ITransferMetadata = {
+  provider: ETransferProvider.RHINO,
+  direction: ETransferDirection.WITHDRAWAL,
+  chainid: EChain.ETHEREUM,
+  endpoint: 'https://api.rhino.fi/withdrawal',
+  provider_ref_id: 'with_xyz456'
+};
+
+// Use metadata in transfer operations
+await client.transfer({
+  amount: '1000',
+  currency: 'USDC',
+  metadata: depositMetadata
+});
+```

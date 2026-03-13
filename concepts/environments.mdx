@@ -1,0 +1,298 @@
+---
+title: Environments
+description: Understanding GRVT environments and their configurations
+---
+
+## Overview
+
+The GRVT SDK supports four distinct environments, each with its own domain and chain ID. Choose the appropriate environment based on your development stage and testing requirements.
+
+## Available Environments
+
+### Production
+
+<Info>
+**Use for:** Live trading with real assets
+</Info>
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment.PRODUCTION
+});
+```
+
+**Configuration:**
+- Domain: `grvt.io`
+- Chain ID: `325`
+- Endpoints:
+  - Edge: `https://edge.grvt.io`
+  - Trades: `https://trades.grvt.io`
+  - Market Data: `https://market-data.grvt.io`
+
+### Testnet
+
+<Info>
+**Use for:** Testing with test tokens in a production-like environment
+</Info>
+
+```typescript
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment.TESTNET
+});
+```
+
+**Configuration:**
+- Domain: `testnet.grvt.io`
+- Chain ID: `326`
+- Endpoints:
+  - Edge: `https://edge.testnet.grvt.io`
+  - Trades: `https://trades.testnet.grvt.io`
+  - Market Data: `https://market-data.testnet.grvt.io`
+
+### Staging
+
+<Info>
+**Use for:** Pre-production testing and validation
+</Info>
+
+```typescript
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment.STAGING
+});
+```
+
+**Configuration:**
+- Domain: `staging.gravitymarkets.io`
+- Chain ID: `327`
+- Endpoints:
+  - Edge: `https://edge.staging.gravitymarkets.io`
+  - Trades: `https://trades.staging.gravitymarkets.io`
+  - Market Data: `https://market-data.staging.gravitymarkets.io`
+
+### Development
+
+<Info>
+**Use for:** Active development and early testing
+</Info>
+
+```typescript
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment.DEV
+});
+```
+
+**Configuration:**
+- Domain: `dev.gravitymarkets.io`
+- Chain ID: `327`
+- Endpoints:
+  - Edge: `https://edge.dev.gravitymarkets.io`
+  - Trades: `https://trades.dev.gravitymarkets.io`
+  - Market Data: `https://market-data.dev.gravitymarkets.io`
+
+## Environment Configuration
+
+From `src/config/config.ts:1-21`:
+
+```typescript
+export enum EGrvtEnvironment {
+  PRODUCTION = 'PRODUCTION',
+  TESTNET = 'TESTNET',
+  STAGING = 'STAGING',
+  DEV = 'DEV',
+}
+
+export interface IGrvtConfig {
+  apiKey?: string;
+  apiSecret?: string;
+  tradingAccountId?: string;
+  env: EGrvtEnvironment;
+}
+
+export const CHAIN_IDS: Record<EGrvtEnvironment, number> = {
+  [EGrvtEnvironment.DEV]: 327,
+  [EGrvtEnvironment.STAGING]: 327,
+  [EGrvtEnvironment.TESTNET]: 326,
+  [EGrvtEnvironment.PRODUCTION]: 325,
+};
+```
+
+## Domain Resolution
+
+The SDK automatically resolves the correct domain based on the environment:
+
+From `src/client/GrvtBaseClient.ts:143-156`:
+
+```typescript
+private getDomain(): string {
+  switch (this.config.env) {
+    case EGrvtEnvironment.PRODUCTION:
+      return 'grvt.io';
+    case EGrvtEnvironment.TESTNET:
+      return 'testnet.grvt.io';
+    case EGrvtEnvironment.STAGING:
+      return 'staging.gravitymarkets.io';
+    case EGrvtEnvironment.DEV:
+      return 'dev.gravitymarkets.io';
+    default:
+      throw new Error(`Unknown environment: ${this.config.env}`);
+  }
+}
+```
+
+## Chain IDs and EIP-712 Signing
+
+Each environment has a unique chain ID used for EIP-712 signing operations. The chain ID is automatically included in the domain data for signed messages:
+
+From `src/signing/domain.ts:4-14`:
+
+```typescript
+export const getEIP712DomainData = (env: EGrvtEnvironment): EIP712DomainData => {
+  const chainId = CHAIN_IDS[env];
+  if (!chainId) {
+    throw new Error(`Invalid environment: ${env}`);
+  }
+  return {
+    name: 'GRVT Exchange',
+    version: '0',
+    chainId,
+  };
+};
+```
+
+## Environment-Specific API Endpoints
+
+The client constructs environment-specific URLs automatically:
+
+From `src/client/GrvtBaseClient.ts:16-20`:
+
+```typescript
+constructor(config: IGrvtConfig) {
+  this.config = config;
+  this.domain = this.getDomain();
+  this.edgeBaseUrl = `https://edge.${this.domain}`;
+}
+```
+
+From `src/client/GrvtClient.ts:49-58`:
+
+```typescript
+constructor(config: IGrvtConfig) {
+  super(config);
+  this.tradesBaseUrl = `https://trades.${this.domain}`;
+  this.marketDataBaseUrl = `https://market-data.${this.domain}`;
+  this.tdgClient = new TDG({
+    host: this.tradesBaseUrl,
+  });
+  this.mdgClient = new MDG({
+    host: this.marketDataBaseUrl,
+  });
+  // ...
+}
+```
+
+## Using Environment Variables
+
+<Warning>
+Always use environment variables for credentials and environment configuration to avoid hardcoding sensitive information.
+</Warning>
+
+### Example Setup
+
+Create a `.env` file:
+
+```bash
+# Development
+GRVT_ENV=DEV
+GRVT_API_KEY=your_dev_api_key
+GRVT_API_SECRET=your_dev_api_secret
+
+# Testnet
+# GRVT_ENV=TESTNET
+# GRVT_API_KEY=your_testnet_api_key
+# GRVT_API_SECRET=your_testnet_api_secret
+
+# Production
+# GRVT_ENV=PRODUCTION
+# GRVT_API_KEY=your_prod_api_key
+# GRVT_API_SECRET=your_prod_api_secret
+```
+
+Load in your application:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET,
+  env: EGrvtEnvironment[process.env.GRVT_ENV as keyof typeof EGrvtEnvironment]
+});
+```
+
+## Environment Comparison
+
+| Feature | DEV | STAGING | TESTNET | PRODUCTION |
+|---------|-----|---------|---------|------------|
+| **Purpose** | Development | Pre-production | Testing | Live trading |
+| **Stability** | Low | Medium | High | Highest |
+| **Data Reset** | Frequent | Occasional | Rare | Never |
+| **Chain ID** | 327 | 327 | 326 | 325 |
+| **Real Assets** | No | No | No | Yes |
+
+## Switching Environments
+
+To switch between environments, simply change the `env` parameter:
+
+```typescript
+// Development
+const devClient = new GrvtClient({
+  apiKey: process.env.GRVT_DEV_API_KEY,
+  apiSecret: process.env.GRVT_DEV_API_SECRET,
+  env: EGrvtEnvironment.DEV
+});
+
+// Move to testnet for integration testing
+const testnetClient = new GrvtClient({
+  apiKey: process.env.GRVT_TESTNET_API_KEY,
+  apiSecret: process.env.GRVT_TESTNET_API_SECRET,
+  env: EGrvtEnvironment.TESTNET
+});
+
+// Deploy to production
+const prodClient = new GrvtClient({
+  apiKey: process.env.GRVT_PROD_API_KEY,
+  apiSecret: process.env.GRVT_PROD_API_SECRET,
+  env: EGrvtEnvironment.PRODUCTION
+});
+```
+
+<Note>
+Use separate API keys for each environment to maintain security boundaries and prevent accidental cross-environment operations.
+</Note>
+
+## Best Practices
+
+1. **Start with DEV**: Begin development in the DEV environment
+2. **Test in TESTNET**: Validate functionality with test tokens before production
+3. **Stage releases**: Use STAGING for final pre-production validation
+4. **Separate credentials**: Use different API keys for each environment
+5. **Environment parity**: Keep test environments as close to production as possible
+6. **Monitor chain IDs**: Ensure signed messages use the correct chain ID for each environment
+
+## Next Steps
+
+- Learn about [authentication](/concepts/authentication) with API keys
+- Understand [EIP-712 signing](/concepts/signing) for secure operations

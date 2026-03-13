@@ -1,0 +1,488 @@
+---
+title: Deposits and Withdrawals
+description: Learn how to deposit funds to GRVT via L1 bridge or direct transfer, withdraw funds, and query transaction history
+---
+
+## Overview
+
+The GRVT SDK supports depositing funds from Layer 1 chains (Ethereum, Arbitrum, etc.) and withdrawing funds back to external addresses. This guide covers both operations and how to track their history.
+
+## Deposits
+
+### Deposit Methods
+
+GRVT supports two deposit methods:
+
+1. **L1 Bridge Deposit** (Ethereum, BNB Chain, etc.): Deposits through the GRVT bridge contract
+2. **Direct Transfer** (Arbitrum): Direct USDT transfer to your L2 address
+
+<Steps>
+  <Step title="Import Required Types">
+    ```typescript
+    import {
+      GrvtClient,
+      EGrvtEnvironment,
+      EChain,
+      IDepositOptions,
+    } from '@grvt/sdk';
+    ```
+  </Step>
+
+  <Step title="Initialize the Client">
+    ```typescript
+    const client = new GrvtClient({
+      apiKey: process.env.API_KEY!,
+      apiSecret: process.env.API_SECRET!,
+      env: EGrvtEnvironment.TESTNET,
+    });
+    ```
+  </Step>
+
+  <Step title="Execute Deposit">
+    ```typescript
+    const txHash = await client.deposit({
+      privateKey: 'your-l1-private-key',
+      l1Sender: '0xYourL1Address',
+      l2Receiver: '0xYourL2Address',
+      amount: '100',
+      chainId: EChain.ETHEREUM_SEPOLIA,
+    });
+
+    console.log('Deposit transaction:', txHash);
+    ```
+  </Step>
+</Steps>
+
+### Deposit Options
+
+The `IDepositOptions` interface accepts:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `privateKey` | `string` | Yes | Private key of L1 wallet |
+| `l1Sender` | `string` | Yes | L1 address sending funds |
+| `l2Receiver` | `string` | Yes | L2 address to receive funds |
+| `amount` | `string` | Yes | Amount to deposit (as string) |
+| `chainId` | `EChain` | Yes | Source chain ID |
+
+### Supported Chains
+
+```typescript
+enum EChain {
+  ETHEREUM_SEPOLIA = '11155111',
+  ARBITRUM_SEPOLIA = '421614',
+  ARBITRUM_ONE = '42161',
+  TRON = '0x2b6653dc',
+  BNB_SMART_CHAIN = '56',
+  // ... and more
+}
+```
+
+### Bridge Deposit (Ethereum)
+
+For Ethereum and other L1 chains, the deposit process:
+
+1. Requests deposit approval from GRVT API
+2. Approves token spending to bridge contract
+3. Executes bridge deposit with signature
+
+```typescript
+const txHash = await client.deposit({
+  privateKey: process.env.L1_PRIVATE_KEY!,
+  l1Sender: '0xYourEthereumAddress',
+  l2Receiver: '0xYourGRVTAddress',
+  amount: '1000',
+  chainId: EChain.ETHEREUM_SEPOLIA,
+});
+
+console.log('Bridge deposit transaction:', txHash);
+```
+
+### Direct Transfer (Arbitrum)
+
+For Arbitrum, deposits are simpler (direct USDT transfer):
+
+```typescript
+const txHash = await client.deposit({
+  privateKey: process.env.L1_PRIVATE_KEY!,
+  l1Sender: '0xYourArbitrumAddress',
+  l2Receiver: '0xYourGRVTAddress',
+  amount: '1000',
+  chainId: EChain.ARBITRUM_ONE,
+});
+
+console.log('Direct deposit transaction:', txHash);
+```
+
+<Note>
+  The SDK automatically detects whether to use bridge deposit or direct transfer based on the `chainId`.
+</Note>
+
+### Request Deposit Approval
+
+For bridge deposits, you can manually request approval (advanced use case):
+
+```typescript
+const approval = await client.requestDepositApproval({
+  l1Sender: '0xYourL1Address',
+  l2Receiver: '0xYourL2Address',
+  l1Token: '0xTokenContractAddress',
+  amount: '1000',
+});
+
+console.log('Deposit approval signature:', approval.signature);
+```
+
+The response includes:
+
+```typescript
+interface IDepositApprovalResponse {
+  signature: {
+    l1Sender: string;
+    l2Receiver: string;
+    l1Token: string;
+    amount: string;
+    deadline: string;
+    v: number;      // Signature v
+    r: string;      // Signature r
+    s: string;      // Signature s
+  };
+}
+```
+
+## Withdrawals
+
+### Execute Withdrawal
+
+Withdraw funds from your GRVT account to an external Ethereum address:
+
+```typescript
+import { ECurrency } from '@grvt/sdk';
+
+const result = await client.withdraw({
+  from_account_id: 'your-account-id',
+  to_eth_address: '0xDestinationAddress',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+});
+
+console.log('Withdrawal submitted:', result);
+```
+
+### Withdrawal Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_account_id` | `string` | Yes | Source account ID |
+| `to_eth_address` | `string` | Yes | Destination Ethereum address |
+| `currency` | `ECurrency` | Yes | Currency to withdraw |
+| `num_tokens` | `string` | Yes | Amount to withdraw |
+| `signature` | `ISignature` | No | Signature (auto-generated if omitted) |
+
+<Warning>
+  Withdrawals require an `apiSecret` for signing. The SDK will throw an error if you attempt to withdraw without one.
+</Warning>
+
+### Withdrawal with Custom Signing
+
+Customize the signature generation:
+
+```typescript
+import { ISigningOptions } from '@grvt/sdk';
+
+const signingOptions: ISigningOptions = {
+  nonce: 12345,
+  expiration: '1746093221289693252', // Nanoseconds
+};
+
+const result = await client.withdraw(
+  {
+    from_account_id: 'your-account-id',
+    to_eth_address: '0xDestinationAddress',
+    currency: ECurrency.USDT,
+    num_tokens: '100',
+  },
+  signingOptions
+);
+```
+
+### Manual Withdrawal Signing
+
+```typescript
+import { signWithdrawal } from '@grvt/sdk/signing';
+import { Wallet } from 'ethers';
+
+const wallet = new Wallet('your-private-key');
+
+const request = {
+  from_account_id: 'your-account-id',
+  to_eth_address: '0xDestinationAddress',
+  currency: ECurrency.USDT,
+  num_tokens: '100',
+};
+
+// Sign manually
+const signature = await signWithdrawal(
+  request,
+  wallet,
+  EGrvtEnvironment.TESTNET
+);
+
+request.signature = signature;
+
+// Execute with pre-signed request
+const result = await client.withdraw(request);
+```
+
+## Transaction History
+
+### Deposit History
+
+Query historical deposits:
+
+```typescript
+const depositHistory = await client.getDepositHistory({
+  start_time: '1745600642000785050', // Nanoseconds since epoch
+  end_time: '1758891778774100000',   // Nanoseconds since epoch
+});
+
+console.log('Deposits:', depositHistory.result);
+```
+
+### Withdrawal History
+
+Query historical withdrawals:
+
+```typescript
+const withdrawalHistory = await client.getWithdrawalHistory({
+  start_time: '1745600642000785050',
+  end_time: '1758891778774100000',
+});
+
+console.log('Withdrawals:', withdrawalHistory.result);
+```
+
+<Warning>
+  Both `start_time` and `end_time` are **required** for all history queries.
+</Warning>
+
+### History Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `start_time` | `string` | Yes | Start time (nanoseconds) |
+| `end_time` | `string` | Yes | End time (nanoseconds) |
+| `sub_account_id` | `string` | No | Filter by sub-account |
+| `limit` | `number` | No | Max results (pagination) |
+| `cursor` | `string` | No | Pagination cursor |
+
+### Pagination
+
+```typescript
+let cursor: string | undefined;
+let allDeposits: any[] = [];
+
+do {
+  const response = await client.getDepositHistory({
+    start_time: '1745600642000785050',
+    end_time: '1758891778774100000',
+    limit: 100,
+    cursor,
+  });
+
+  allDeposits = allDeposits.concat(response.result);
+  cursor = response.next_cursor;
+} while (cursor);
+
+console.log('Total deposits:', allDeposits.length);
+```
+
+## Complete Example
+
+```typescript
+import {
+  GrvtClient,
+  EGrvtEnvironment,
+  EChain,
+  ECurrency,
+} from '@grvt/sdk';
+
+async function manageDepositsAndWithdrawals() {
+  const client = new GrvtClient({
+    apiKey: process.env.API_KEY!,
+    apiSecret: process.env.API_SECRET!,
+    env: EGrvtEnvironment.TESTNET,
+  });
+
+  try {
+    // Deposit from Ethereum
+    console.log('Depositing from Ethereum...');
+    const depositTx = await client.deposit({
+      privateKey: process.env.L1_PRIVATE_KEY!,
+      l1Sender: '0xYourEthereumAddress',
+      l2Receiver: '0xYourGRVTAddress',
+      amount: '1000',
+      chainId: EChain.ETHEREUM_SEPOLIA,
+    });
+    console.log('Deposit transaction:', depositTx);
+
+    // Wait for deposit to be processed
+    // (In production, use WebSocket or polling to check status)
+
+    // Query deposit history
+    const depositHistory = await client.getDepositHistory({
+      start_time: '1745600642000785050',
+      end_time: '1758891778774100000',
+    });
+    console.log('Recent deposits:', depositHistory.result.length);
+
+    // Withdraw funds
+    console.log('Withdrawing funds...');
+    const withdrawal = await client.withdraw({
+      from_account_id: 'your-account-id',
+      to_eth_address: '0xDestinationAddress',
+      currency: ECurrency.USDT,
+      num_tokens: '500',
+    });
+    console.log('Withdrawal submitted:', withdrawal);
+
+    // Query withdrawal history
+    const withdrawalHistory = await client.getWithdrawalHistory({
+      start_time: '1745600642000785050',
+      end_time: '1758891778774100000',
+    });
+    console.log('Recent withdrawals:', withdrawalHistory.result.length);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+manageDepositsAndWithdrawals();
+```
+
+## KYA Check for Rhino SDA Deposits
+
+Before depositing through Rhino Smart Deposit Address (SDA), you can check KYA (Know Your Asset) status:
+
+```typescript
+import { EKYACheckStatus } from '@grvt/sdk';
+
+const kyaStatus = await client.kyaCheckRhinoSDADeposit(
+  '0xSenderAddress',
+  'BNB_SMART_CHAIN',
+  '0xSmartDepositAddress'
+);
+
+if (kyaStatus === EKYACheckStatus.CLEARED) {
+  console.log('KYA check passed, deposit allowed');
+} else if (kyaStatus === EKYACheckStatus.DIRTY) {
+  console.log('KYA check failed, deposit not allowed');
+}
+```
+
+## Chain ID Conversion
+
+Convert Rhino chain names to Gravity chain IDs:
+
+```typescript
+const chainId = await client.getGravityChainIDFromRhinoChain('BNB_SMART_CHAIN');
+
+if (chainId) {
+  console.log('Gravity chain ID:', chainId);
+  // DEV/STAGING/TESTNET: 97
+  // PRODUCTION: 56
+} else {
+  console.log('Chain not supported');
+}
+```
+
+<Note>
+  The chain ID mapping depends on the environment:
+  - **DEV, STAGING**: Rhino DEV
+  - **TESTNET**: Rhino STG
+  - **PRODUCTION**: Rhino PROD
+</Note>
+
+## Error Handling
+
+```typescript
+try {
+  const txHash = await client.deposit({
+    privateKey: process.env.L1_PRIVATE_KEY!,
+    l1Sender: '0xYourAddress',
+    l2Receiver: '0xYourGRVTAddress',
+    amount: '1000',
+    chainId: EChain.ETHEREUM_SEPOLIA,
+  });
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes('Unsupported chain ID')) {
+      console.error('Chain not supported for deposits');
+    } else if (error.message.includes('Bridge address not configured')) {
+      console.error('Bridge not available for this environment');
+    } else {
+      console.error('Deposit failed:', error.message);
+    }
+  }
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Secure Private Keys">
+    Never hardcode private keys. Use environment variables:
+
+    ```typescript
+    const txHash = await client.deposit({
+      privateKey: process.env.L1_PRIVATE_KEY!,
+      // ...
+    });
+    ```
+  </Step>
+
+  <Step title="Validate Addresses">
+    Ensure addresses are valid before depositing:
+
+    ```typescript
+    import { ethers } from 'ethers';
+
+    if (!ethers.isAddress(l2Receiver)) {
+      throw new Error('Invalid L2 address');
+    }
+    ```
+  </Step>
+
+  <Step title="Use String Amounts">
+    Always use strings for amounts to avoid precision issues:
+
+    ```typescript
+    amount: '1000.50'  // Good
+    amount: (1000.50).toString()  // Avoid
+    ```
+  </Step>
+
+  <Step title="Monitor Transactions">
+    After deposit/withdrawal, monitor the transaction:
+
+    ```typescript
+    // Check deposit history periodically
+    const checkDeposit = setInterval(async () => {
+      const history = await client.getDepositHistory({
+        start_time: beforeDepositTime,
+        end_time: nowTime,
+      });
+      if (history.result.length > 0) {
+        console.log('Deposit confirmed!');
+        clearInterval(checkDeposit);
+      }
+    }, 10000);
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+- Learn about [transfer operations](/guides/transfers)
+- Explore [account management](/guides/account-management)
+- Understand [WebSocket streaming](/guides/websocket-client)

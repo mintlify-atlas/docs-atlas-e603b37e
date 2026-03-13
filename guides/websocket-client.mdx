@@ -1,0 +1,373 @@
+---
+title: Using the WebSocket Client
+description: Stream real-time data using GrvtWsClient for live transfer updates and event notifications
+---
+
+## Overview
+
+The `GrvtWsClient` class provides real-time streaming capabilities through WebSocket connections. It supports automatic reconnection, connection monitoring, and subscription management for live data feeds.
+
+## Installation
+
+```bash
+npm install @grvt/sdk
+```
+
+## Quick Start
+
+<Steps>
+  <Step title="Import the WebSocket Client">
+    ```typescript
+    import { GrvtWsClient, EGrvtEnvironment } from '@grvt/sdk';
+    ```
+  </Step>
+
+  <Step title="Initialize the Client">
+    ```typescript
+    const wsClient = new GrvtWsClient({
+      apiKey: 'your-api-key',
+      env: EGrvtEnvironment.TESTNET,
+    });
+    ```
+
+    <Note>
+      Unlike `GrvtClient`, the WebSocket client does not require an `apiSecret` for authentication.
+    </Note>
+  </Step>
+
+  <Step title="Connect to WebSocket">
+    ```typescript
+    await wsClient.connect();
+    console.log('WebSocket connected');
+    ```
+  </Step>
+
+  <Step title="Subscribe to Data Streams">
+    ```typescript
+    wsClient.subscribeTransferHistory(
+      'main-account-id',
+      (data) => {
+        console.log('Transfer update:', data);
+      }
+    );
+    ```
+  </Step>
+
+  <Step title="Disconnect When Done">
+    ```typescript
+    wsClient.disconnect();
+    ```
+  </Step>
+</Steps>
+
+## Connection Management
+
+### Establishing a Connection
+
+The `connect()` method establishes a WebSocket connection and handles authentication:
+
+```typescript
+const wsClient = new GrvtWsClient({
+  apiKey: process.env.API_KEY!,
+  env: EGrvtEnvironment.TESTNET,
+});
+
+try {
+  await wsClient.connect();
+  console.log('Successfully connected to WebSocket');
+} catch (error) {
+  console.error('Connection failed:', error);
+}
+```
+
+### Automatic Reconnection
+
+The client automatically reconnects if the connection is lost:
+
+- **Maximum reconnection attempts**: 5
+- **Reconnection delay**: Exponential backoff starting at 1 second, up to 30 seconds
+- **Connection monitoring**: Reconnects if no messages received within 5 seconds
+
+```typescript
+// Reconnection is handled automatically
+await wsClient.connect();
+
+// The client will attempt to reconnect automatically if disconnected
+```
+
+<Warning>
+  Subscriptions are **not** automatically restored after reconnection. You need to manually resubscribe after a reconnection event.
+</Warning>
+
+### Manual Disconnection
+
+Always disconnect when you're done to clean up resources:
+
+```typescript
+wsClient.disconnect();
+```
+
+This will:
+- Close the WebSocket connection
+- Clear reconnection timers
+- Stop connection monitoring
+
+## Subscriptions
+
+### Transfer History Subscription
+
+Subscribe to real-time transfer updates for an account:
+
+```typescript
+wsClient.subscribeTransferHistory(
+  'main-account-id',
+  (data) => {
+    console.log('Transfer event:', data);
+  }
+);
+```
+
+### Sub-Account Transfer Subscription
+
+Subscribe to transfers for a specific sub-account:
+
+```typescript
+wsClient.subscribeTransferHistory(
+  'main-account-id',
+  (data) => {
+    console.log('Sub-account transfer:', data);
+  },
+  'sub-account-id'  // Optional third parameter
+);
+```
+
+### Multiple Subscriptions
+
+You can subscribe to multiple accounts or sub-accounts:
+
+```typescript
+const mainAccountId = 'main-account-id';
+const subAccountIds = ['sub-1', 'sub-2', 'sub-3'];
+
+// Subscribe to main account
+wsClient.subscribeTransferHistory(mainAccountId, (data) => {
+  console.log('Main account transfer:', data);
+});
+
+// Subscribe to each sub-account
+subAccountIds.forEach(subAccountId => {
+  wsClient.subscribeTransferHistory(
+    mainAccountId,
+    (data) => {
+      console.log(`Sub-account ${subAccountId} transfer:`, data);
+    },
+    subAccountId
+  );
+});
+```
+
+## WebSocket Features
+
+### Authentication
+
+The WebSocket client uses cookie-based authentication:
+
+1. Automatically obtains authentication cookie before connecting
+2. Includes `Cookie` and `X-Grvt-Account-Id` headers in the WebSocket handshake
+3. Refreshes authentication when reconnecting
+
+```typescript
+// Authentication is handled automatically
+const wsClient = new GrvtWsClient({
+  apiKey: 'your-api-key',
+  env: EGrvtEnvironment.TESTNET,
+});
+
+await wsClient.connect();
+```
+
+### Connection Monitoring
+
+The client monitors connection health:
+
+- Tracks the last message received time
+- Checks every 5 seconds if messages are still being received
+- Automatically reconnects if no messages received within the timeout
+
+```typescript
+// Connection monitoring runs automatically
+await wsClient.connect();
+
+// If no messages are received for 5 seconds, the client will reconnect
+```
+
+### Message Handling
+
+Messages are automatically parsed and routed to the appropriate handlers:
+
+```typescript
+wsClient.subscribeTransferHistory(
+  'account-id',
+  (data) => {
+    // Data is already parsed from JSON
+    console.log('Transfer ID:', data.transfer_id);
+    console.log('Amount:', data.num_tokens);
+    console.log('Currency:', data.currency);
+  }
+);
+```
+
+## Complete Example
+
+```typescript
+import { GrvtWsClient, EGrvtEnvironment } from '@grvt/sdk';
+
+async function streamTransfers() {
+  const wsClient = new GrvtWsClient({
+    apiKey: process.env.API_KEY!,
+    env: EGrvtEnvironment.TESTNET,
+  });
+
+  try {
+    // Connect to WebSocket
+    await wsClient.connect();
+    console.log('Connected to WebSocket');
+
+    // Subscribe to main account transfers
+    wsClient.subscribeTransferHistory(
+      'main-account-id',
+      (data) => {
+        console.log('Transfer update:', JSON.stringify(data, null, 2));
+      }
+    );
+
+    // Subscribe to sub-account transfers
+    wsClient.subscribeTransferHistory(
+      'main-account-id',
+      (data) => {
+        console.log('Sub-account transfer:', JSON.stringify(data, null, 2));
+      },
+      'sub-account-id'
+    );
+
+    // Keep connection alive for 5 minutes
+    await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000));
+  } catch (error) {
+    console.error('WebSocket error:', error);
+  } finally {
+    // Clean up
+    wsClient.disconnect();
+    console.log('Disconnected from WebSocket');
+  }
+}
+
+streamTransfers().catch(console.error);
+```
+
+## Error Handling
+
+### Connection Errors
+
+```typescript
+try {
+  await wsClient.connect();
+} catch (error) {
+  console.error('Failed to connect:', error);
+  // Handle connection failure
+}
+```
+
+### Message Parsing Errors
+
+Parsing errors are logged automatically but don't stop the connection:
+
+```typescript
+// The client logs parsing errors to console
+// Error parsing message: <error details>
+```
+
+### Reconnection Failures
+
+If all reconnection attempts fail, the client stops trying:
+
+```typescript
+// After 5 failed reconnection attempts, the client gives up
+// You'll need to manually call connect() again
+
+if (!wsClient.isConnected()) {
+  await wsClient.connect();
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Always Handle Connection Errors">
+    Wrap `connect()` calls in try-catch blocks:
+
+    ```typescript
+    try {
+      await wsClient.connect();
+    } catch (error) {
+      console.error('Connection failed:', error);
+      // Implement fallback logic
+    }
+    ```
+  </Step>
+
+  <Step title="Clean Up on Exit">
+    Always disconnect when done:
+
+    ```typescript
+    process.on('SIGINT', () => {
+      wsClient.disconnect();
+      process.exit();
+    });
+    ```
+  </Step>
+
+  <Step title="Handle Reconnection">
+    Be prepared to resubscribe after reconnection:
+
+    ```typescript
+    function subscribe() {
+      wsClient.subscribeTransferHistory('account-id', (data) => {
+        console.log('Transfer:', data);
+      });
+    }
+
+    // Subscribe initially
+    await wsClient.connect();
+    subscribe();
+
+    // If you detect a reconnection, resubscribe
+    // (You'll need to implement reconnection detection)
+    ```
+  </Step>
+
+  <Step title="Use Environment Variables">
+    Never hardcode API keys:
+
+    ```typescript
+    const wsClient = new GrvtWsClient({
+      apiKey: process.env.API_KEY!,
+      env: process.env.GRVT_ENV as EGrvtEnvironment,
+    });
+    ```
+  </Step>
+</Steps>
+
+## WebSocket URL
+
+The client automatically determines the WebSocket URL based on the environment:
+
+- **DEV**: `wss://trades.dev.gravitymarkets.io/ws/full`
+- **STAGING**: `wss://trades.staging.gravitymarkets.io/ws/full`
+- **TESTNET**: `wss://trades.testnet.grvt.io/ws/full`
+- **PRODUCTION**: `wss://trades.grvt.io/ws/full`
+
+## Next Steps
+
+- Learn about [transfer operations](/guides/transfers)
+- Explore [REST API client](/guides/rest-client)
+- Understand [account management](/guides/account-management)

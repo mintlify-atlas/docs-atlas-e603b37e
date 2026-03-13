@@ -1,0 +1,447 @@
+---
+title: EIP-712 Signing
+description: Understanding EIP-712 typed data signing for transfers and withdrawals
+---
+
+## Overview
+
+The GRVT SDK uses EIP-712 typed structured data signing to ensure secure, verifiable operations. This standard allows users to sign human-readable messages that are cryptographically secure and prevent replay attacks.
+
+## What is EIP-712?
+
+EIP-712 is an Ethereum standard for signing typed structured data. It provides:
+
+- **Type safety**: Structured data with defined types
+- **Human readability**: Clear representation of what you're signing
+- **Replay protection**: Chain ID and nonce prevent transaction replay
+- **Domain separation**: Different applications can't reuse signatures
+
+## Supported Operations
+
+The SDK automatically signs these operations when an API secret is provided:
+
+- **Transfers**: Moving funds between accounts and sub-accounts
+- **Withdrawals**: Withdrawing funds to Ethereum addresses
+
+<Note>
+If you don't provide an API secret, you must manually provide signatures for these operations.
+</Note>
+
+## Transfer Signing
+
+### Automatic Signing
+
+When you provide an API secret, transfers are automatically signed:
+
+```typescript
+import { GrvtClient, EGrvtEnvironment } from '@grvt/client';
+
+const client = new GrvtClient({
+  apiKey: process.env.GRVT_API_KEY,
+  apiSecret: process.env.GRVT_API_SECRET, // Required for signing
+  env: EGrvtEnvironment.TESTNET
+});
+
+// SDK automatically signs this transfer
+await client.transfer({
+  from_account_id: '0x1234...',
+  from_sub_account_id: '1',
+  to_account_id: '0x5678...',
+  to_sub_account_id: '1',
+  currency: 'USDC',
+  num_tokens: '100.50'
+});
+```
+
+### Manual Signing
+
+For advanced use cases, you can sign transfers manually:
+
+```typescript
+import { signTransfer } from '@grvt/client';
+import { Wallet } from 'ethers';
+
+const wallet = new Wallet(process.env.PRIVATE_KEY);
+
+const transferRequest = {
+  from_account_id: '0x1234...',
+  from_sub_account_id: '1',
+  to_account_id: '0x5678...',
+  to_sub_account_id: '1',
+  currency: 'USDC',
+  num_tokens: '100.50'
+};
+
+const signature = await signTransfer(
+  transferRequest,
+  wallet,
+  EGrvtEnvironment.TESTNET
+);
+
+// Use the signature in your request
+await client.transfer({
+  ...transferRequest,
+  signature
+});
+```
+
+### Transfer Type Definition
+
+From `src/signing/types.ts:373-389`:
+
+```typescript
+export const Transfer = {
+  primaryType: PrimaryType.Transfer,
+  domain,
+  types: {
+    EIP712Domain,
+    [PrimaryType.Transfer]: [
+      { name: 'fromAccount', type: 'address' },
+      { name: 'fromSubAccount', type: 'uint64' },
+      { name: 'toAccount', type: 'address' },
+      { name: 'toSubAccount', type: 'uint64' },
+      { name: 'tokenCurrency', type: 'uint8' },
+      { name: 'numTokens', type: 'uint64' },
+      { name: 'nonce', type: 'uint32' },
+      { name: 'expiration', type: 'int64' },
+    ],
+  },
+};
+```
+
+## Withdrawal Signing
+
+### Automatic Signing
+
+```typescript
+// SDK automatically signs this withdrawal
+await client.withdraw({
+  from_account_id: '0x1234...',
+  to_eth_address: '0x9876...',
+  currency: 'USDC',
+  num_tokens: '50.00'
+});
+```
+
+### Manual Signing
+
+```typescript
+import { signWithdrawal } from '@grvt/client';
+import { Wallet } from 'ethers';
+
+const wallet = new Wallet(process.env.PRIVATE_KEY);
+
+const withdrawalRequest = {
+  from_account_id: '0x1234...',
+  to_eth_address: '0x9876...',
+  currency: 'USDC',
+  num_tokens: '50.00'
+};
+
+const signature = await signWithdrawal(
+  withdrawalRequest,
+  wallet,
+  EGrvtEnvironment.TESTNET
+);
+
+await client.withdraw({
+  ...withdrawalRequest,
+  signature
+});
+```
+
+### Withdrawal Type Definition
+
+From `src/signing/types.ts:357-371`:
+
+```typescript
+export const Withdrawal = {
+  primaryType: PrimaryType.Withdrawal,
+  domain,
+  types: {
+    EIP712Domain,
+    [PrimaryType.Withdrawal]: [
+      { name: 'fromAccount', type: 'address' },
+      { name: 'toEthAddress', type: 'address' },
+      { name: 'tokenCurrency', type: 'uint8' },
+      { name: 'numTokens', type: 'uint64' },
+      { name: 'nonce', type: 'uint32' },
+      { name: 'expiration', type: 'int64' },
+    ],
+  },
+};
+```
+
+## Signature Components
+
+EIP-712 signatures consist of three components:
+
+```typescript
+interface ISignature {
+  r: string;      // First 32 bytes of signature
+  s: string;      // Second 32 bytes of signature
+  v: number;      // Recovery id (27 or 28)
+  signer: string; // Ethereum address of the signer
+  nonce: number;  // Unique nonce for replay protection
+  expiration: string; // Expiration time in nanoseconds
+}
+```
+
+From `src/signing/signer.ts:21-44`:
+
+```typescript
+static decode(signature: ReturnType<typeof Signer.sign>): {
+  r: string;
+  s: string;
+  v: number;
+} {
+  const bytes = [];
+  for (let i = 0; i < signature.length; i += 2) {
+    const parseByte = parseInt(signature.substr(i, 2), 16);
+    if (!Number.isNaN(parseByte)) {
+      bytes.push(parseByte);
+    }
+  }
+  const r = Array.from(bytes.slice(0, 32), (byte: number) =>
+    ('0' + (byte & 0xff).toString(16)).slice(-2)
+  ).join('');
+  const s = Array.from(bytes.slice(32, 64), (byte: number) =>
+    ('0' + (byte & 0xff).toString(16)).slice(-2)
+  ).join('');
+  return {
+    r: `0x${r}`,
+    s: `0x${s}`,
+    v: bytes.slice(-1)[0],
+  };
+}
+```
+
+## Domain Data
+
+Each environment has a unique domain for EIP-712 signing:
+
+From `src/signing/domain.ts:4-14`:
+
+```typescript
+export const getEIP712DomainData = (env: EGrvtEnvironment): EIP712DomainData => {
+  const chainId = CHAIN_IDS[env];
+  if (!chainId) {
+    throw new Error(`Invalid environment: ${env}`);
+  }
+  return {
+    name: 'GRVT Exchange',
+    version: '0',
+    chainId,
+  };
+};
+```
+
+The domain structure:
+
+```typescript
+interface EIP712DomainData {
+  name: string;     // "GRVT Exchange"
+  version: string;  // "0"
+  chainId: number;  // Environment-specific (325, 326, or 327)
+}
+```
+
+## Nonce and Expiration
+
+### Automatic Generation
+
+By default, the SDK generates a random nonce and 24-hour expiration:
+
+From `src/signing/utils.ts:4-17`:
+
+```typescript
+/**
+ * Generate a random nonce
+ * @returns A random nonce
+ */
+export function GenerateNonce(): number {
+  return Math.floor(Math.random() * 1e9);
+}
+
+/**
+ * Generate an expiration time
+ * @param expirationInHours - The number of hours to set the expiration time to, default is 24 hours
+ * @returns The expiration time in nanoseconds
+ */
+export function GenerateExpiration(expirationInHours: number = 24): string {
+  const expirationTime = (Date.now() + expirationInHours * 60 * 60 * 1000) * 1e6;
+  return expirationTime.toString();
+}
+```
+
+### Custom Nonce and Expiration
+
+You can provide custom signing options:
+
+```typescript
+import { ISigningOptions } from '@grvt/client';
+
+const signingOptions: ISigningOptions = {
+  nonce: 12345678,
+  expiration: '1704067200000000000' // Custom expiration in nanoseconds
+};
+
+await client.transfer(
+  {
+    from_account_id: '0x1234...',
+    to_account_id: '0x5678...',
+    currency: 'USDC',
+    num_tokens: '100.00'
+  },
+  undefined, // metadata
+  signingOptions
+);
+```
+
+<Warning>
+**Important considerations for custom nonces:**
+
+- Nonces must be unique to prevent replay attacks
+- Reusing a nonce will cause the transaction to fail
+- Expiration times are in nanoseconds (not milliseconds)
+</Warning>
+
+## Token Precision
+
+Tokens are represented with 6 decimal places internally:
+
+From `src/signing/transfer.ts:56-68`:
+
+```typescript
+function parseNumTokens(numTokens: string): number {
+  // Check for more than one decimal point
+  const parts = numTokens.split('.');
+  if (parts.length > 2) {
+    throw new Error('num_tokens cannot have more than one decimal point');
+  }
+  // Check for more than 6 decimal places
+  if (parts.length === 2 && parts[1].length > 6) {
+    throw new Error('num_tokens cannot have more than 6 decimal places');
+  }
+  const numTokensNumber = Number(parseUnits(numTokens, 6));
+  return numTokensNumber;
+}
+```
+
+<Info>
+Token amounts support up to 6 decimal places. For example:
+- Valid: `"100.123456"`
+- Invalid: `"100.1234567"` (7 decimal places)
+</Info>
+
+## Signing Implementation
+
+The SDK uses MetaMask's `eth-sig-util` library for EIP-712 signing:
+
+From `src/signing/signer.ts:7-19`:
+
+```typescript
+export class Signer {
+  static sign(
+    privateKey: string,
+    data: TContractTypesUnion & {
+      message: any;
+    }
+  ): string {
+    return signTypedData({
+      privateKey: Buffer.from(privateKey.replace(/^0x/, ''), 'hex'),
+      data: data as any,
+      version: SignTypedDataVersion.V4,
+    });
+  }
+  // ...
+}
+```
+
+## Complete Transfer Signing Example
+
+From `src/signing/transfer.ts:12-54`:
+
+```typescript
+export const signTransfer = async (
+  transfer: IApiTransferRequest,
+  wallet: Wallet,
+  env: EGrvtEnvironment,
+  options?: ISigningOptions
+): Promise<ISignature> => {
+  if (options) {
+    validateISigningOptions(options);
+  }
+  const nonce = options?.nonce ?? GenerateNonce();
+  const expiration = options?.expiration || GenerateExpiration();
+  const domain = getEIP712DomainData(env);
+
+  if (!transfer.num_tokens) {
+    throw new Error('num_tokens is required');
+  }
+  const numTokens = parseNumTokens(transfer.num_tokens);
+  const messageData = {
+    fromAccount: transfer.from_account_id || '',
+    fromSubAccount: transfer.from_sub_account_id || '',
+    toAccount: transfer.to_account_id || '',
+    toSubAccount: transfer.to_sub_account_id || '',
+    tokenCurrency: transfer.currency ? Object.keys(ECurrency).indexOf(transfer.currency) + 1 : 0,
+    numTokens: numTokens,
+    nonce: nonce,
+    expiration: expiration,
+  };
+  const signature = await Signer.sign(wallet.privateKey, {
+    ...Transfer,
+    domain,
+    message: messageData,
+  });
+  const { r, s, v } = Signer.decode(signature);
+
+  return {
+    r: r,
+    s: s,
+    v: v,
+    signer: wallet.address,
+    nonce: nonce,
+    expiration: expiration,
+  };
+};
+```
+
+## Security Considerations
+
+<Warning>
+**Security best practices:**
+
+1. **Never share private keys**: API secrets should be kept secure
+2. **Verify domain data**: Ensure you're signing for the correct environment
+3. **Check expiration times**: Don't set excessively long expiration periods
+4. **Validate addresses**: Confirm recipient addresses before signing
+5. **Use unique nonces**: Never reuse nonces for different transactions
+</Warning>
+
+## Error Handling
+
+```typescript
+try {
+  await client.transfer({
+    from_account_id: '0x1234...',
+    to_account_id: '0x5678...',
+    currency: 'USDC',
+    num_tokens: '100.1234567' // Too many decimal places
+  });
+} catch (error) {
+  if (error.message.includes('more than 6 decimal places')) {
+    console.error('Token amount has too many decimal places');
+  } else if (error.message.includes('signing requires API secret')) {
+    console.error('API secret is required for signing operations');
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [authentication](/concepts/authentication) with API keys
+- Explore [different environments](/concepts/environments) for testing and production
+- Check out the [Transfer guide](/guides/transfers) documentation
+- Review the [Deposits & Withdrawals guide](/guides/deposits-withdrawals) documentation

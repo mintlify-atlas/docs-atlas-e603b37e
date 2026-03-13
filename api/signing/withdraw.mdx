@@ -1,0 +1,198 @@
+---
+title: "signWithdrawal"
+description: "Sign a withdrawal request using EIP-712"
+---
+
+## Overview
+
+The `signWithdrawal` function creates an EIP-712 signature for withdrawing tokens from a GRVT Exchange account to an Ethereum address. This signature is required when submitting a withdrawal request to the API.
+
+## Function Signature
+
+```typescript
+signWithdrawal(
+  withdrawal: IApiWithdrawalRequest,
+  wallet: Wallet,
+  env: EGrvtEnvironment,
+  options?: ISigningOptions
+): Promise<ISignature>
+```
+
+## Parameters
+
+<ParamField path="withdrawal" type="IApiWithdrawalRequest" required>
+  The withdrawal request object containing:
+  
+  <Expandable title="properties">
+    <ParamField path="from_account_id" type="string" required>
+      The account ID to withdraw from
+    </ParamField>
+    
+    <ParamField path="to_eth_address" type="string" required>
+      The Ethereum address to withdraw to
+    </ParamField>
+    
+    <ParamField path="currency" type="string" required>
+      The currency to withdraw (e.g., "USD", "BTC", "ETH")
+    </ParamField>
+    
+    <ParamField path="num_tokens" type="string" required>
+      The number of tokens to withdraw as a decimal string (e.g., "100.50")
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="wallet" type="Wallet" required>
+  An ethers.js Wallet instance used to sign the withdrawal. The wallet's private key will be used for EIP-712 signing.
+</ParamField>
+
+<ParamField path="env" type="EGrvtEnvironment" required>
+  The GRVT environment (e.g., `EGrvtEnvironment.PROD`, `EGrvtEnvironment.DEV`). This determines the chain ID used in the EIP-712 domain.
+</ParamField>
+
+<ParamField path="options" type="ISigningOptions">
+  Optional signing parameters:
+  
+  <Expandable title="properties">
+    <ParamField path="nonce" type="number">
+      A unique nonce for this signature. If not provided, a random nonce is generated using `GenerateNonce()`.
+    </ParamField>
+    
+    <ParamField path="expiration" type="string">
+      The signature expiration time in nanoseconds. If not provided, defaults to 24 hours from now using `GenerateExpiration()`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="signature" type="ISignature">
+  The EIP-712 signature object containing:
+  
+  <Expandable title="properties">
+    <ResponseField name="r" type="string">
+      The r component of the ECDSA signature (hex string)
+    </ResponseField>
+    
+    <ResponseField name="s" type="string">
+      The s component of the ECDSA signature (hex string)
+    </ResponseField>
+    
+    <ResponseField name="v" type="number">
+      The recovery id of the ECDSA signature
+    </ResponseField>
+    
+    <ResponseField name="signer" type="string">
+      The Ethereum address of the signer (wallet address)
+    </ResponseField>
+    
+    <ResponseField name="nonce" type="number">
+      The nonce used in the signature
+    </ResponseField>
+    
+    <ResponseField name="expiration" type="string">
+      The expiration time in nanoseconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## EIP-712 Structure
+
+The function signs a structured message according to EIP-712 with the following schema:
+
+**Domain:**
+- `name`: "GRVT Exchange"
+- `version`: "0"
+- `chainId`: Environment-specific chain ID
+
+**Primary Type:** `Withdrawal`
+
+**Message Fields:**
+- `fromAccount` (address): Source account ID
+- `toEthAddress` (address): Destination Ethereum address
+- `tokenCurrency` (uint8): Currency enumeration index
+- `numTokens` (uint64): Token amount in micro-units (6 decimal places)
+- `nonce` (uint32): Unique nonce
+- `expiration` (int64): Expiration timestamp in nanoseconds
+
+## Example
+
+```typescript
+import { signWithdrawal } from '@grvt/sdk';
+import { Wallet } from 'ethers';
+import { EGrvtEnvironment } from '@grvt/sdk/config';
+
+// Create wallet from private key
+const wallet = new Wallet('0x...');
+
+// Prepare withdrawal request
+const withdrawalRequest = {
+  from_account_id: '0x1234...',
+  to_eth_address: '0x5678...',
+  currency: 'USD',
+  num_tokens: '100.50' // Withdraw 100.50 tokens
+};
+
+// Sign the withdrawal
+const signature = await signWithdrawal(
+  withdrawalRequest,
+  wallet,
+  EGrvtEnvironment.PROD
+);
+
+// Use signature in API request
+const request = {
+  ...withdrawalRequest,
+  signature
+};
+
+// Submit to API
+await client.withdraw(request);
+```
+
+## Example with Custom Options
+
+```typescript
+import { signWithdrawal, GenerateNonce, GenerateExpiration } from '@grvt/sdk';
+
+// Custom nonce and expiration (expires in 48 hours)
+const signature = await signWithdrawal(
+  withdrawalRequest,
+  wallet,
+  EGrvtEnvironment.PROD,
+  {
+    nonce: GenerateNonce(),
+    expiration: GenerateExpiration(48) // 48 hours
+  }
+);
+```
+
+## Token Amount Conversion
+
+The `num_tokens` parameter is automatically converted from a decimal string to micro-units (6 decimal places):
+- Input: `"100.50"` → Output: `100500000` (100.50 × 10^6)
+- Input: `"0.000001"` → Output: `1`
+- Input: `"1000"` → Output: `1000000000`
+
+## Validation
+
+The function validates:
+- Custom `options` are valid (if provided)
+- All required fields are present in the withdrawal request
+
+## Errors
+
+- Throws `Error` if `options` validation fails
+- Throws `Error` if invalid environment is provided
+
+## Security Considerations
+
+- Always verify the `to_eth_address` before signing
+- Ensure the withdrawal address is whitelisted on your account
+- Use appropriate expiration times to limit signature validity
+- Store private keys securely and never expose them
+
+## Related
+
+- [signTransfer](/api/signing/transfer) - Sign transfer requests
+- [Signing Utilities](/api/signing/utils) - Nonce and expiration generation
